@@ -2,9 +2,10 @@
 
 import { API_PATHS } from "@bookleaf/shared";
 import type { Ticket } from "@bookleaf/shared";
+import type { TicketFilterValues } from "@/components/admin/TicketFilters";
 import { buildSseUrl, useSseStream } from "./useSseStream";
 
-function filtersToQuery(filters?: Record<string, string | undefined>): string {
+function filtersToQuery(filters?: TicketFilterValues): string {
   if (!filters) return "";
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
@@ -29,7 +30,7 @@ export function useAuthorTicketDetailStream(
 
 export function useAdminTicketStream(
   onUpdate: (tickets: Ticket[]) => void,
-  filters?: Record<string, string | undefined>,
+  filters?: TicketFilterValues,
 ) {
   const filterQuery = filtersToQuery(filters);
   const url = buildSseUrl(`${API_PATHS.admin.ticketStream}${filterQuery}`);
