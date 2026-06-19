@@ -3,7 +3,7 @@
 #
 #   backend    → root: /  → apps/backend/railway.toml
 #   frontend   → root: /  → apps/frontend/railway.toml
-#   ai-service → root: apps/ai-service → apps/ai-service/railway.toml
+#   ai-service → root: /  → apps/ai-service/railway.toml
 #   postgres   → Railway PostgreSQL plugin
 #
 # See deploy/railway.env.example and scripts/deploy-railway.sh

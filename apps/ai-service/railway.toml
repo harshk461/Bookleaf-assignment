@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "apps/ai-service/Dockerfile"
 
 [deploy]
 healthcheckPath = "/health"
