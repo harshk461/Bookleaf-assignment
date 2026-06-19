@@ -3,6 +3,8 @@ WORKDIR /app
 COPY apps/ai-service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY apps/ai-service/app ./app
+COPY apps/ai-service/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 ENV PORT=8000
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["./docker-entrypoint.sh"]
