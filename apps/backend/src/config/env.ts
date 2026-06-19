@@ -7,7 +7,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(4000),
   JWT_SECRET: z.string().min(8),
   JWT_EXPIRES_IN: z.string().default('7d'),
-  AI_SERVICE_URL: z.string().url().default('http://localhost:8000'),
+  AI_SERVICE_URL: z.string().min(1).default('http://localhost:8000'),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
 });
 

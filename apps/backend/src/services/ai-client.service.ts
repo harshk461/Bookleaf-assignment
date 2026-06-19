@@ -2,7 +2,9 @@ import { loadEnv } from '../config/env.js';
 import { DEFAULT_TICKET_CATEGORY, DEFAULT_TICKET_PRIORITY } from '../config/constants.js';
 import type { TicketCategory, TicketPriority } from '@bookleaf/shared';
 
-const env = loadEnv();
+function aiServiceUrl(): string {
+  return loadEnv().AI_SERVICE_URL;
+}
 
 export interface ClassifyResult {
   category: TicketCategory;
@@ -16,7 +18,7 @@ export async function classifyAndPrioritize(input: {
   bookTitle?: string | null;
 }): Promise<ClassifyResult> {
   try {
-    const res = await fetch(`${env.AI_SERVICE_URL}/classify`, {
+    const res = await fetch(`${aiServiceUrl()}/classify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -41,7 +43,7 @@ export async function generateDraft(input: {
   authorName?: string | null;
 }): Promise<{ content: string; failed: boolean }> {
   try {
-    const res = await fetch(`${env.AI_SERVICE_URL}/draft`, {
+    const res = await fetch(`${aiServiceUrl()}/draft`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
