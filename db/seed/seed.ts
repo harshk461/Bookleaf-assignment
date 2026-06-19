@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import { fileURLToPath } from 'node:url';
+import { createPgPool } from '../create-pool.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_PATH = path.join(__dirname, 'data', 'bookleaf_sample_data.json');
@@ -57,7 +57,7 @@ async function main() {
   const passwordHash = await bcrypt.hash(password, 10);
   const raw = JSON.parse(fs.readFileSync(DATA_PATH, 'utf-8')) as { authors: SampleAuthor[] };
 
-  const pool = new pg.Pool({ connectionString: databaseUrl });
+  const pool = createPgPool(databaseUrl);
   const client = await pool.connect();
 
   try {
