@@ -1,16 +1,9 @@
-name = "bookleaf-assignment"
-
-[build]
-builder = "NIXPACKS"
-
-[[services]]
-name = "frontend"
-source = "apps/frontend"
-
-[[services]]
-name = "backend"
-source = "apps/backend"
-
-[[services]]
-name = "ai-service"
-source = "apps/ai-service"
+# Railway does not deploy all services from one file.
+# Create one Railway service per app and point each at its own config:
+#
+#   backend    → root: /  → apps/backend/railway.toml
+#   frontend   → root: /  → apps/frontend/railway.toml
+#   ai-service → root: apps/ai-service → apps/ai-service/railway.toml
+#   postgres   → Railway PostgreSQL plugin
+#
+# See deploy/railway.env.example and scripts/deploy-railway.sh

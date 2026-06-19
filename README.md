@@ -102,9 +102,35 @@ Full spec: [docs/api/openapi.yaml](./docs/api/openapi.yaml)
 - Fallback defaults on AI failure: `general_inquiry` / `medium`
 - Model: `gpt-4o-mini` with daily spend cap
 
+## Deployment (Railway)
+
+Production configs are in `apps/*/railway.toml` and `deploy/railway.env.example`.
+
+```bash
+# 1. Log in once (opens browser)
+npx @railway/cli login
+
+# 2. Follow the guided checklist
+bash scripts/deploy-railway.sh
+
+# 3. After Postgres is up, seed the remote DB from your machine
+DATABASE_URL="postgresql://..." bash scripts/deploy-seed-remote.sh
+```
+
+**Important for this monorepo:** backend and frontend Dockerfiles need the **repo root** as the Railway service root directory (not `apps/backend`). Set `RAILWAY_DOCKERFILE_PATH=apps/backend/Dockerfile` if not using the per-app `railway.toml`.
+
+**Live demo URLs** — add after deploy:
+
+| | URL |
+|---|-----|
+| App | _pending_ |
+| API | _pending_ |
+
+Full guide: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
+
 ## Related Docs
 
 - [ASSIGNMENT_FINDINGS.md](./ASSIGNMENT_FINDINGS.md)
 - [DB_DESIGN.md](./DB_DESIGN.md)
-- [DEPLOYMENT.md](./DEPLOYMENT.md)
+- [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 - [WRITEUP.md](./WRITEUP.md)
