@@ -16,3 +16,15 @@ export interface Book {
   printPartner: string | null;
   availableOn: string[];
 }
+
+export interface BookSale {
+  id: string;
+  saleDate: string;
+  platform: string | null;
+  quantity: number;
+  unitMrp: number | null;
+  royaltyPerCopy: number;
+  royaltyAmount: number;
+  payoutStatus: string;
+  orderReference: string | null;
+}

@@ -18,6 +18,9 @@ declare module '@fastify/jwt' {
 declare module 'fastify' {
   interface FastifyRequest {
     user: JwtUser;
+    validatedBody?: unknown;
+    validatedQuery?: unknown;
+    validatedParams?: unknown;
   }
 }
 

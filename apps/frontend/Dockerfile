@@ -1,15 +1,14 @@
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
-ARG TARGETARCH=amd64
-
 # Workspace hoisting can skip platform-specific optional deps for apps/frontend — install per arch.
 COPY package.json package-lock.json ./
 COPY apps/frontend/package.json ./apps/frontend/
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/shared/package.json ./packages/shared/
 RUN npm ci \
-  && if [ "$TARGETARCH" = "arm64" ]; then \
+  && ARCH=$(uname -m) \
+  && if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
        LC_PKG="lightningcss-linux-arm64-gnu"; \
        OX_PKG="@tailwindcss/oxide-linux-arm64-gnu"; \
      else \

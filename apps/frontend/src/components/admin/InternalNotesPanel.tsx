@@ -1,18 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/common/Button";
+import { Loader2Icon, StickyNote } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/common/EmptyState";
 import { formatDate } from "@/utils/formatDate";
 
-interface Note {
-  id: string;
-  content: string;
-  adminName?: string;
-  createdAt: string;
-}
-
 interface InternalNotesPanelProps {
-  notes: Note[];
+  notes: Array<{ id: string; content: string; adminName: string; createdAt: string }>;
   onAdd: (content: string) => Promise<void>;
 }
 
@@ -32,23 +30,45 @@ export function InternalNotesPanel({ notes, onAdd }: InternalNotesPanelProps) {
   }
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-      <h3 className="mb-3 font-medium text-amber-900">Internal Notes (Admin only)</h3>
-      <ul className="mb-4 space-y-2">
-        {notes.map((note) => (
-          <li key={note.id} className="rounded bg-white p-2 text-sm">
-            <div className="text-xs text-slate-500">{note.adminName} · {formatDate(note.createdAt)}</div>
-            <p>{note.content}</p>
-          </li>
-        ))}
-      </ul>
-      <textarea
-        className="mb-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-        placeholder="Add internal note..."
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-      />
-      <Button onClick={handleAdd} disabled={saving}>Add Note</Button>
-    </div>
+    <Card className="border-accent/30 bg-accent/5">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Internal Notes</CardTitle>
+        <CardDescription>Visible to admins only — not shared with authors</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {notes.length === 0 ? (
+          <EmptyState
+            icon={StickyNote}
+            title="No notes yet"
+            description="Add internal notes for your team."
+          />
+        ) : (
+          <ul className="space-y-2">
+            {notes.map((note) => (
+              <li key={note.id} className="rounded-lg border border-accent/20 bg-card p-3 text-sm">
+                <p className="whitespace-pre-wrap">{note.content}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {note.adminName} · {formatDate(note.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="note">Add note</Label>
+          <Textarea
+            id="note"
+            className="min-h-20 bg-card"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Team-only note..."
+          />
+          <Button type="button" size="sm" onClick={handleAdd} disabled={saving || !content.trim()}>
+            {saving && <Loader2Icon className="animate-spin" />}
+            Add Note
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

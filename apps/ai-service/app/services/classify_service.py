@@ -13,14 +13,22 @@ def classify_ticket(req: ClassifyRequest) -> ClassifyResponse:
         user += f"\nBook: {req.book_title}"
 
     result = chat_json(f"{SYSTEM_BASE}\n{CLASSIFY_PROMPT}", user, MAX_TOKENS_CLASSIFY)
-    if not result:
+    if not result or not result.data:
         fb = fallback_classify()
         return ClassifyResponse(**fb)
 
-    category = result.get("category", "general_inquiry")
-    priority = result.get("priority", "medium")
+    category = result.data.get("category", "general_inquiry")
+    priority = result.data.get("priority", "medium")
     if not is_valid_category(category) or not is_valid_priority(priority):
         fb = fallback_classify()
         return ClassifyResponse(**fb)
 
-    return ClassifyResponse(category=category, priority=priority)
+    return ClassifyResponse(
+        category=category,
+        priority=priority,
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+        estimated_cost_usd=result.estimated_cost_usd,
+        latency_ms=result.latency_ms,
+        model=result.model,
+    )

@@ -10,6 +10,14 @@ export interface TicketMessage {
   isInitial?: boolean;
 }
 
+export interface TicketAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 export interface Ticket {
   id: string;
   ticketNumber: string;
@@ -20,11 +28,17 @@ export interface Ticket {
   status: TicketStatus;
   category: TicketCategory | null;
   priority: TicketPriority | null;
+  aiCategory?: TicketCategory | null;
+  aiPriority?: TicketPriority | null;
+  categoryOverridden?: boolean;
+  priorityOverridden?: boolean;
   aiClassificationFailed?: boolean;
   assignedAdminName?: string | null;
+  authorName?: string | null;
   createdAt: string;
   updatedAt: string;
   messages?: TicketMessage[];
+  attachments?: TicketAttachment[];
 }
 
 export interface CreateTicketInput {

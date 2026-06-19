@@ -28,6 +28,25 @@ def draft_response(req: DraftRequest) -> DraftResponse:
         user += f"\nBook: {req.book_title}"
     if req.author_name:
         user += f"\nAuthor: {req.author_name}"
+    if req.book_context:
+        ctx = req.book_context
+        user += (
+            f"\nBook context (from dashboard): status={ctx.get('status')}, "
+            f"copies_sold={ctx.get('total_copies_sold')}, "
+            f"royalty_pending={ctx.get('royalty_pending')}, "
+            f"royalty_paid={ctx.get('royalty_paid')}, "
+            f"last_payout={ctx.get('last_royalty_payout_date')}"
+        )
 
-    content = chat_text(f"{SYSTEM_BASE}\n{DRAFT_PROMPT}", user, MAX_TOKENS_DRAFT)
-    return DraftResponse(content=content or fallback_draft())
+    result = chat_text(f"{SYSTEM_BASE}\n{DRAFT_PROMPT}", user, MAX_TOKENS_DRAFT)
+    if not result or not result.content:
+        return DraftResponse(content=fallback_draft())
+
+    return DraftResponse(
+        content=result.content,
+        input_tokens=result.input_tokens,
+        output_tokens=result.output_tokens,
+        estimated_cost_usd=result.estimated_cost_usd,
+        latency_ms=result.latency_ms,
+        model=result.model,
+    )

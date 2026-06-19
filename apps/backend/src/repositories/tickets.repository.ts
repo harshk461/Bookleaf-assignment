@@ -21,10 +21,24 @@ export async function getTicketForAuthor(authorRef: string, ticketId: string) {
   );
 }
 
+const ADMIN_QUEUE_ORDER = `
+  ORDER BY
+    CASE t.priority
+      WHEN 'critical' THEN 1
+      WHEN 'high' THEN 2
+      WHEN 'medium' THEN 3
+      WHEN 'low' THEN 4
+      ELSE 5
+    END,
+    CASE WHEN t.status IN ('open', 'in_progress') THEN t.created_at END ASC NULLS LAST,
+    t.created_at DESC`;
+
 export async function listAdminTickets(filters: {
   status?: string;
   category?: string;
   priority?: string;
+  from?: string;
+  to?: string;
 }) {
   const clauses = ['t.deleted_at IS NULL'];
   const params: unknown[] = [];
@@ -40,6 +54,14 @@ export async function listAdminTickets(filters: {
     params.push(filters.priority);
     clauses.push(`t.priority = $${params.length}`);
   }
+  if (filters.from) {
+    params.push(filters.from);
+    clauses.push(`t.created_at >= $${params.length}::date`);
+  }
+  if (filters.to) {
+    params.push(filters.to);
+    clauses.push(`t.created_at < ($${params.length}::date + INTERVAL '1 day')`);
+  }
   return getDb().query(
     `SELECT t.*, a.name AS author_name, b.book_id, b.title AS book_title,
             u.name AS assigned_admin_name
@@ -48,7 +70,7 @@ export async function listAdminTickets(filters: {
      LEFT JOIN books b ON b.id = t.book_ref
      LEFT JOIN users u ON u.id = t.assigned_admin_ref
      WHERE ${clauses.join(' AND ')}
-     ORDER BY t.priority DESC NULLS LAST, t.created_at DESC`,
+     ${ADMIN_QUEUE_ORDER}`,
     params,
   );
 }

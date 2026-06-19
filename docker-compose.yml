@@ -48,6 +48,10 @@ services:
       DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
       AI_SERVICE_URL: http://ai-service:8000
       CORS_ORIGIN: http://localhost:3000
+      UPLOAD_DIR: /data/uploads
+      MAX_UPLOAD_BYTES: 5242880
+    volumes:
+      - backend_uploads:/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,3 +80,4 @@ networks:
 
 volumes:
   postgres_data:
+  backend_uploads:

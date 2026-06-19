@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useRouter } from "next/navigation";
 import type { User } from "@bookleaf/shared";
 import * as authService from "@/services/auth.service";
 
@@ -23,6 +24,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,11 +51,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res.user;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // Best-effort — clear local session regardless
+    }
     localStorage.removeItem("bookleaf_token");
     setToken(null);
     setUser(null);
-  }, []);
+    router.push("/login");
+    router.refresh();
+  }, [router]);
 
   const value = useMemo(
     () => ({ user, token, loading, login, logout }),

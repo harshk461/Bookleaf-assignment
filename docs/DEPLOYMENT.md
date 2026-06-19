@@ -268,6 +268,10 @@ CORS_ORIGIN=https://your-frontend.up.railway.app
 AI_SERVICE_URL=http://ai-service.railway.internal:8000
 AI_SERVICE_TIMEOUT_MS=30000
 
+# Ticket attachments — mount Railway volume at /data/uploads
+UPLOAD_DIR=/data/uploads
+MAX_UPLOAD_BYTES=5242880
+
 # Optional
 LOG_LEVEL=info
 ```
@@ -622,7 +626,7 @@ Before sharing URL with evaluators:
 
 - Single-region deployment (India/US authors — latency OK for demo)
 - No Redis queue (AI calls synchronous with timeout)
-- No file upload for attachments
+- Attachment uploads stored at `UPLOAD_DIR` (default `/data/uploads` in Docker/Railway); **attach a persistent volume** in Railway dashboard so files survive redeploys
 - Polling instead of WebSockets
 - Railway sleep if usage exceeds credits (monitor dashboard)
 

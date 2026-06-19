@@ -3,6 +3,8 @@ import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import { fileURLToPath } from 'node:url';
 import { createPgPool } from '../create-pool.js';
+import { seedDemoTickets } from './07_demo_tickets.js';
+import { seedBookSales } from './08_book_sales.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_PATH = path.join(__dirname, 'data', 'bookleaf_sample_data.json');
@@ -146,6 +148,9 @@ async function main() {
        ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
       ['admin@bookleaf.com', passwordHash],
     );
+
+    await seedDemoTickets(client);
+    await seedBookSales(client);
 
     await client.query('COMMIT');
     console.log(`Seeded ${raw.authors.length} authors and admin@bookleaf.com`);

@@ -1,6 +1,11 @@
 import type { CreateTicketInput, Ticket } from "@bookleaf/shared";
 import { API_PATHS } from "@bookleaf/shared";
-import { api } from "./api";
+import { api, API_URL } from "./api";
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("bookleaf_token");
+}
 
 export async function fetchTickets() {
   return api<Ticket[]>(API_PATHS.author.tickets);
@@ -10,10 +15,36 @@ export async function fetchTicket(id: string) {
   return api<Ticket>(API_PATHS.author.ticket(id));
 }
 
-export async function createTicket(input: CreateTicketInput) {
+export async function createTicket(
+  input: CreateTicketInput & { file?: File | null },
+) {
+  const token = getToken();
+  if (input.file) {
+    const form = new FormData();
+    form.append("bookId", input.bookId ?? "");
+    form.append("subject", input.subject);
+    form.append("description", input.description);
+    form.append("file", input.file);
+
+    const res = await fetch(`${API_URL}${API_PATHS.author.tickets}`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error((body as { error?: string }).error ?? res.statusText);
+    }
+    return res.json() as Promise<Ticket>;
+  }
+
   return api<Ticket>(API_PATHS.author.tickets, {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      bookId: input.bookId,
+      subject: input.subject,
+      description: input.description,
+    }),
   });
 }
 
@@ -23,7 +54,13 @@ export async function fetchAdminTickets(params?: Record<string, string>) {
 }
 
 export async function fetchAdminTicket(id: string) {
-  return api<Ticket & { aiDraft?: string }>(API_PATHS.admin.ticket(id));
+  return api<Ticket & { aiDraft?: string | null }>(API_PATHS.admin.ticket(id));
+}
+
+export async function generateAdminDraft(id: string) {
+  return api<{ aiDraft: string; aiDraftFailed?: boolean }>(API_PATHS.admin.ticketDraft(id), {
+    method: "POST",
+  });
 }
 
 export async function patchAdminTicket(id: string, body: Record<string, unknown>) {

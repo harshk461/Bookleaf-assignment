@@ -7,13 +7,15 @@
   ],
   "scripts": {
     "dev": "bash scripts/dev.sh",
+    "dev:docker": "bash scripts/dev.sh docker",
     "setup": "bash scripts/setup.sh",
     "migrate": "bash scripts/migrate.sh",
     "seed": "bash scripts/seed.sh",
     "build": "npm run build --workspaces --if-present",
-    "dev:frontend": "npm run dev -w apps/frontend",
-    "dev:backend": "npm run dev -w apps/backend",
-    "dev:ai": "cd apps/ai-service && uvicorn app.main:app --reload --port 8000"
+    "openapi:generate": "npm run openapi:generate -w apps/backend",
+    "dev:frontend": "PORT=3000 npm run dev -w apps/frontend",
+    "dev:backend": "PORT=4000 npm run dev -w apps/backend",
+    "dev:ai": "cd apps/ai-service && PORT=8000 uvicorn app.main:app --reload --port 8000"
   },
   "engines": {
     "node": ">=20"

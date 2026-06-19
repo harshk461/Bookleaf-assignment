@@ -10,6 +10,11 @@ class ClassifyRequest(BaseModel):
 class ClassifyResponse(BaseModel):
     category: str
     priority: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    estimated_cost_usd: float | None = None
+    latency_ms: int | None = None
+    model: str | None = None
 
 
 class DraftRequest(BaseModel):
@@ -18,7 +23,13 @@ class DraftRequest(BaseModel):
     category: str | None = None
     book_title: str | None = None
     author_name: str | None = None
+    book_context: dict | None = None
 
 
 class DraftResponse(BaseModel):
     content: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    estimated_cost_usd: float | None = None
+    latency_ms: int | None = None
+    model: str | None = None

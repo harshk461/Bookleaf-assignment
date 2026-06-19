@@ -63,3 +63,4 @@ Thumbs.db
 
 # Docker (local volume data — not committed)
 postgres_data/
+uploads/

@@ -1,30 +1,37 @@
 "use client";
 
-import { useEffect } from "react";
 import { API_PATHS } from "@bookleaf/shared";
-import { API_URL } from "@/services/api";
 import type { Ticket } from "@bookleaf/shared";
+import { buildSseUrl, useSseStream } from "./useSseStream";
+
+function filtersToQuery(filters?: Record<string, string | undefined>): string {
+  if (!filters) return "";
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, value);
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
 
 export function useTicketStream(onUpdate: (tickets: Ticket[]) => void) {
-  useEffect(() => {
-    const token = localStorage.getItem("bookleaf_token");
-    if (!token) return;
+  const url = buildSseUrl(API_PATHS.author.ticketStream);
+  useSseStream<Ticket[]>(url, "tickets", onUpdate);
+}
 
-    const source = new EventSource(
-      `${API_URL}${API_PATHS.author.ticketStream}?token=${encodeURIComponent(token)}`,
-    );
+export function useAuthorTicketDetailStream(
+  ticketId: string,
+  onUpdate: (ticket: Ticket) => void,
+) {
+  const url = buildSseUrl(API_PATHS.author.ticketStreamDetail(ticketId));
+  useSseStream<Ticket>(url, "ticket", onUpdate);
+}
 
-    // Note: EventSource cannot send Authorization header; backend should also accept cookie/query in production.
-    // For assignment scaffold, polling fallback is used via useTickets refresh.
-    source.addEventListener("tickets", (event) => {
-      try {
-        onUpdate(JSON.parse((event as MessageEvent).data) as Ticket[]);
-      } catch {
-        /* ignore parse errors */
-      }
-    });
-
-    source.onerror = () => source.close();
-    return () => source.close();
-  }, [onUpdate]);
+export function useAdminTicketStream(
+  onUpdate: (tickets: Ticket[]) => void,
+  filters?: Record<string, string | undefined>,
+) {
+  const filterQuery = filtersToQuery(filters);
+  const url = buildSseUrl(`${API_PATHS.admin.ticketStream}${filterQuery}`);
+  useSseStream<Ticket[]>(url, "tickets", onUpdate);
 }

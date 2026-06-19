@@ -8,6 +8,25 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bookleaf
+          POSTGRES_PASSWORD: bookleaf
+          POSTGRES_DB: bookleaf
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bookleaf -d bookleaf"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://bookleaf:bookleaf@localhost:5432/bookleaf
+      JWT_SECRET: test-secret-min-8-chars
+      AI_SERVICE_URL: http://localhost:8000
+      CORS_ORIGIN: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,3 +37,11 @@ jobs:
       - run: npm run build -w packages/shared
       - run: npm run typecheck -w apps/backend --if-present
       - run: npm run build -w apps/frontend
+      - run: bash scripts/migrate.sh
+      - run: bash scripts/seed.sh
+      - run: npm run test -w apps/backend
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r apps/ai-service/requirements.txt
+      - run: cd apps/ai-service && PYTHONPATH=. python3 -m pytest tests/

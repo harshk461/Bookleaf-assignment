@@ -10,12 +10,17 @@ export function useTickets(admin = false) {
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(
-    async (filters?: Record<string, string>) => {
+    async (filters?: Record<string, string | undefined>) => {
       setLoading(true);
       setError(null);
       try {
+        const params = filters
+          ? Object.fromEntries(
+              Object.entries(filters).filter(([, v]) => v !== undefined && v !== ""),
+            ) as Record<string, string>
+          : undefined;
         const data = admin
-          ? await ticketsService.fetchAdminTickets(filters)
+          ? await ticketsService.fetchAdminTickets(params)
           : await ticketsService.fetchTickets();
         setTickets(data);
       } catch (err) {
@@ -31,5 +36,5 @@ export function useTickets(admin = false) {
     void refresh();
   }, [refresh]);
 
-  return { tickets, loading, error, refresh };
+  return { tickets, setTickets, loading, error, refresh };
 }

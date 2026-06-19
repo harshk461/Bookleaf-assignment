@@ -1,29 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { Inbox } from "lucide-react";
+import type { Ticket } from "@bookleaf/shared";
 import { useTickets } from "@/hooks/useTickets";
-import { TicketFilters } from "@/components/admin/TicketFilters";
+import { useAdminTicketStream } from "@/hooks/useTicketStream";
+import { TicketFilters, type TicketFilterValues } from "@/components/admin/TicketFilters";
 import { TicketList } from "@/components/tickets/TicketList";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorAlert } from "@/components/common/ErrorAlert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
+
+function TicketListSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Card key={i} className="p-4">
+          <Skeleton className="h-5 w-2/3 mb-2" />
+          <Skeleton className="h-4 w-1/3" />
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 export function TicketQueuePage() {
-  const [filters, setFilters] = useState<{ status?: string; category?: string; priority?: string }>({});
-  const { tickets, loading, error, refresh } = useTickets(true);
+  const [filters, setFilters] = useState<TicketFilterValues>({});
+  const { tickets, setTickets, loading, error, refresh } = useTickets(true);
 
-  function handleFilterChange(values: typeof filters) {
+  const onStream = useCallback(
+    (streamed: Ticket[]) => {
+      setTickets((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(streamed)) return prev;
+        return streamed;
+      });
+    },
+    [setTickets],
+  );
+
+  useAdminTicketStream(onStream, filters);
+
+  const openCount = useMemo(
+    () => tickets.filter((t) => t.status === "open" || t.status === "in_progress").length,
+    [tickets],
+  );
+
+  function handleFilterChange(values: TicketFilterValues) {
     setFilters(values);
-    void refresh(values);
+    void refresh(values as Record<string, string | undefined>);
   }
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) {
+    return (
+      <div>
+        <PageHeader title="Ticket Queue" description="Manage author support requests" />
+        <Skeleton className="h-24 w-full mb-4 rounded-xl" />
+        <TicketListSkeleton />
+      </div>
+    );
+  }
+
   if (error) return <ErrorAlert message={error} />;
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-semibold">Ticket Queue</h1>
+      <PageHeader
+        title="Ticket Queue"
+        description={`${openCount} open · ${tickets.length} total`}
+      />
       <TicketFilters values={filters} onChange={handleFilterChange} />
-      <TicketList tickets={tickets} admin />
+
+      {tickets.length === 0 ? (
+        <EmptyState
+          icon={Inbox}
+          title="Queue is empty"
+          description="No tickets match your filters. New author requests will appear here."
+        />
+      ) : (
+        <TicketList tickets={tickets} admin />
+      )}
     </div>
   );
 }

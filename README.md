@@ -33,21 +33,26 @@ docker compose up postgres -d
 # Install & seed
 bash scripts/setup.sh
 
-# Run all services
-bash scripts/dev.sh
+# Run all services locally (hot reload — no Docker rebuilds)
+npm run dev
 ```
 
-### Manual dev (without Docker for apps)
+Uses Docker **only for Postgres** if it is not already running. App code runs natively with hot reload.
+
+### Docker full stack (production-like)
 
 ```bash
-# Terminal 1 — AI service
-cd apps/ai-service && pip install -r requirements.txt && uvicorn app.main:app --reload --port 8000
+npm run dev:docker
+```
 
-# Terminal 2 — Backend
-npm run dev:backend
+Rebuilds images on start — use only when testing the Docker deployment, not for day-to-day coding.
 
-# Terminal 3 — Frontend
+### Run services individually
+
+```bash
 npm run dev:frontend
+npm run dev:backend
+npm run dev:ai
 ```
 
 - Frontend: http://localhost:3000
@@ -85,22 +90,46 @@ Base URL: `http://localhost:4000`
 | Method | Endpoint | Role |
 |--------|----------|------|
 | POST | `/api/auth/login` | Public |
+| POST | `/api/auth/logout` | Auth |
 | GET | `/api/auth/me` | Auth |
 | GET | `/api/author/books` | Author |
 | GET/POST | `/api/author/tickets` | Author |
 | GET | `/api/author/tickets/stream` | Author (SSE) |
+| GET | `/api/author/tickets/:id/stream` | Author (SSE) |
+| GET | `/api/author/tickets/:id/attachments/:attachmentId` | Author |
+| GET | `/api/admin/tickets` | Admin (query: `status`, `category`, `priority`, `from`, `to`) |
+| GET | `/api/admin/tickets/stream` | Admin (SSE, same filters) |
 | GET/PATCH | `/api/admin/tickets/:id` | Admin |
+| POST | `/api/admin/tickets/:id/draft` | Admin |
 | POST | `/api/admin/tickets/:id/responses` | Admin |
 | POST | `/api/admin/tickets/:id/notes` | Admin |
+| GET | `/api/admin/tickets/:id/attachments/:attachmentId` | Admin |
 
 Full spec: [docs/api/openapi.yaml](./docs/api/openapi.yaml)
 
+## Known limitations
+
+- **SSE auth:** EventSource uses `?token=` query param (httpOnly cookie auth deferred for production)
+- **Uploads:** Local/Docker volume storage (`UPLOAD_DIR`), not S3
+- **AI budget:** Daily spend cap tracked in AI service (file-backed); draft returns HTTP 503 when exceeded; classify falls back gracefully
+- **Logout:** Stateless JWT — no server-side token invalidation
+
 ## AI Strategy
 
-- `OPENAI_API_KEY` lives **only** in `apps/ai-service`
-- Backend proxies classify/draft requests to AI service
-- Fallback defaults on AI failure: `general_inquiry` / `medium`
-- Model: `gpt-4o-mini` with daily spend cap
+- `OPENAI_API_KEY` lives **only** in `apps/ai-service` (never exposed to frontend)
+- Backend proxies classify/draft to the internal AI service
+- **Model:** `gpt-4o-mini` — cost-effective, supports JSON mode for classification, sufficient for support drafting
+- **Combined classify + prioritize** in one LLM call (halves API cost vs separate calls)
+- **KB injection:** category-specific snippets only (not full 8-page paste)
+- **Token caps:** description truncated to 2,000 chars; classify 256 / draft 512 max tokens
+- **Draft on demand:** cached in `ai_draft_responses`; OpenAI called only when admin clicks Generate
+- **Audit:** every AI call logged to `ticket_ai_logs` with tokens, latency, cost estimate
+- **Daily spend cap:** `MAX_DAILY_SPEND_USD` in AI service; draft returns HTTP 503 when exceeded; classify falls back gracefully
+- **Fallbacks:** `general_inquiry` / `medium` for classification; generic draft text for manual edit
+
+Regenerate API docs: `npm run openapi:generate`
+
+Full cost breakdown: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) §7
 
 ## Deployment (Railway)
 

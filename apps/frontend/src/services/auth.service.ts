@@ -12,3 +12,7 @@ export async function login(email: string, password: string) {
 export async function getMe() {
   return api<AuthResponse["user"]>(API_PATHS.auth.me);
 }
+
+export async function logout() {
+  return api<{ ok: boolean }>(API_PATHS.auth.logout, { method: "POST" });
+}

@@ -13,9 +13,11 @@ RUN npm run build -w apps/backend
 
 FROM node:20-alpine
 WORKDIR /app
+RUN mkdir -p /data/uploads
 COPY --from=builder /app/apps/backend/dist ./dist
 COPY --from=builder /app/apps/backend/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 ENV PORT=4000
+ENV UPLOAD_DIR=/data/uploads
 EXPOSE 4000
 CMD ["node", "dist/index.js"]
