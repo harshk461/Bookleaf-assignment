@@ -1,0 +1,16 @@
+name = "bookleaf-assignment"
+
+[build]
+builder = "NIXPACKS"
+
+[[services]]
+name = "frontend"
+source = "apps/frontend"
+
+[[services]]
+name = "backend"
+source = "apps/backend"
+
+[[services]]
+name = "ai-service"
+source = "apps/ai-service"

@@ -1,0 +1,9 @@
+import {
+  TICKET_CATEGORY_LABELS,
+  TICKET_PRIORITY_LABELS,
+  TICKET_STATUS_LABELS,
+} from "@bookleaf/shared";
+
+export { TICKET_CATEGORY_LABELS, TICKET_PRIORITY_LABELS, TICKET_STATUS_LABELS };
+
+export const APP_NAME = "BookLeaf Author Support";

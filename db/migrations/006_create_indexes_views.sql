@@ -1,0 +1,1 @@
+-- 006: indexes already in prior migrations; placeholder for view migration tracking

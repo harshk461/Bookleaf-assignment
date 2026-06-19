@@ -1,0 +1,57 @@
+openapi: 3.0.3
+info:
+  title: BookLeaf Author Support API
+  version: 0.1.0
+  description: REST API for author and admin portals
+servers:
+  - url: http://localhost:4000
+paths:
+  /api/auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        "200":
+          description: JWT token and user profile
+  /api/author/books:
+    get:
+      summary: List author books
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Array of books
+  /api/author/tickets:
+    get:
+      summary: List author tickets
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Array of tickets
+    post:
+      summary: Create ticket (triggers AI classify)
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201":
+          description: Created ticket
+  /api/admin/tickets:
+    get:
+      summary: Admin ticket queue
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Filtered ticket list
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

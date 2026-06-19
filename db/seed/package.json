@@ -1,0 +1,15 @@
+{
+  "name": "@bookleaf/db-seed",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "bookleaf-assignment",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bash scripts/dev.sh",
+    "setup": "bash scripts/setup.sh",
+    "migrate": "bash scripts/migrate.sh",
+    "seed": "bash scripts/seed.sh",
+    "build": "npm run build --workspaces --if-present",
+    "dev:frontend": "npm run dev -w apps/frontend",
+    "dev:backend": "npm run dev -w apps/backend",
+    "dev:ai": "cd apps/ai-service && uvicorn app.main:app --reload --port 8000"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/pg": "^8.11.10",
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.13.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0"
+  }
+}
