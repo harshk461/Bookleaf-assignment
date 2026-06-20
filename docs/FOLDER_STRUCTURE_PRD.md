@@ -3,7 +3,8 @@
 > **Document type:** Product Requirements Document (Folder Structure)  
 > **Project:** Author Support & Communication Portal (Assignment 1 of 2)  
 > **Related docs:** [ASSIGNMENT_FINDINGS.md](./ASSIGNMENT_FINDINGS.md) · [DB_DESIGN.md](./DB_DESIGN.md) · [DEPLOYMENT.md](./DEPLOYMENT.md)  
-> **Status:** Proposed — ready for implementation
+> **Status:** Implemented — matches current monorepo layout  
+> **Implementation note:** Built with **Next.js 15** (`apps/frontend/src/views/`) rather than Vite (`src/pages/`) described in early drafts below. Backend, AI service, and DB paths match this PRD.
 
 ---
 
@@ -65,7 +66,7 @@ This PRD defines the **repository folder structure** for the BookLeaf assignment
 bookleaf-assignment/
 │
 ├── apps/                              # Deployable applications
-│   ├── frontend/                      # React + Vite — Author & Admin portals
+│   ├── frontend/                      # Next.js 15 — Author & Admin portals
 │   ├── backend/                       # Node.js + Fastify — REST API + SSE
 │   └── ai-service/                    # Python + FastAPI — LLM integration (internal only)
 │
@@ -618,13 +619,13 @@ bookleaf-assignment/
 
 The folder structure is complete when:
 
-- [ ] Evaluator can clone repo and run `scripts/setup.sh` (or README steps) successfully
-- [ ] Author and admin flows are findable within 2 clicks in `apps/frontend/src/pages/`
-- [ ] All API routes map to files under `apps/backend/src/routes/`
-- [ ] AI logic is isolated in `apps/ai-service/` with no key in frontend bundle
-- [ ] DB seed reproduces 10 authors + 18 books from provided JSON
-- [ ] `README.md`, `WRITEUP.md`, and API docs exist at documented paths
-- [ ] `docker-compose.yml` starts full stack locally
+- [x] Evaluator can clone repo and run `scripts/setup.sh` (or README steps) successfully
+- [x] Author and admin flows are findable within 2 clicks in `apps/frontend/src/views/`
+- [x] All API routes map to files under `apps/backend/src/routes/`
+- [x] AI logic is isolated in `apps/ai-service/` with no key in frontend bundle
+- [x] DB seed reproduces 10 authors + 18 books from provided JSON
+- [x] `README.md`, `WRITEUP.md`, and API docs exist at documented paths
+- [x] `docker-compose.yml` starts full stack locally
 
 ---
 

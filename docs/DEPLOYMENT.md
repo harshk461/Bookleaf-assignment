@@ -55,7 +55,7 @@
 │                                                                          │
 │  ┌──────────────┐    REST/SSE     ┌──────────────┐    HTTP (internal)  │
 │  │   Frontend   │ ◄──────────────►│   Backend    │◄──────────────────┐ │
-│  │  (React/Vite)│                 │  (Fastify)   │                   │ │
+│  │  (Next.js)   │                 │  (Fastify)   │                   │ │
 │  │  Port: 3000  │                 │  Port: 4000  │                   │ │
 │  └──────────────┘                 └──────┬───────┘                   │ │
 │         ▲                                │                           │ │
@@ -95,7 +95,7 @@
 ```
 bookleaf-assignment/
 ├── apps/
-│   ├── frontend/                 # React + Vite (or Next.js static export)
+│   ├── frontend/                 # Next.js 15 — Author & Admin portals
 │   │   ├── package.json
 │   │   ├── Dockerfile            # optional — Railway can use Nixpacks
 │   │   └── src/
@@ -309,14 +309,14 @@ MAX_TOKENS_DRAFT=500
 AI_SERVICE_API_KEY=<random-string>
 ```
 
-### `apps/frontend` (React/Vite)
+### `apps/frontend` (Next.js 15)
 
 ```bash
-# Build-time (Vite)
-VITE_API_URL=https://your-backend.up.railway.app
-
-# Or runtime config via window.__ENV__ if needed
+# Build-time — must be set before Docker/Railway build
+NEXT_PUBLIC_API_URL=https://your-backend.up.railway.app
 ```
+
+Railway uses `apps/frontend/Dockerfile` with the repo root as service root; see [README.md](../README.md) § Deployment.
 
 ### `.env.example` (root — for local docker-compose)
 
@@ -326,7 +326,7 @@ REDIS_URL=redis://localhost:6379
 JWT_SECRET=dev-secret-change-in-production
 GEMINI_API_KEY=AIza...
 AI_SERVICE_URL=http://localhost:8000
-VITE_API_URL=http://localhost:4000
+NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
 ---
@@ -378,11 +378,10 @@ VITE_API_URL=http://localhost:4000
 
 ### Step 5 — Deploy frontend
 
-1. **+ New** → same repo → root `apps/frontend`
-2. Build command (Vite example): `npm run build`
-3. Start command: `npx serve -s dist -l $PORT`
-4. Variables → `VITE_API_URL=https://<backend-domain>`
-5. Generate public domain — this is your **demo URL**
+1. **+ New** → same repo → root directory = **repo root** (not `apps/frontend`)
+2. Set `RAILWAY_DOCKERFILE_PATH=apps/frontend/Dockerfile` (or use `apps/frontend/railway.toml`)
+3. Variables → `NEXT_PUBLIC_API_URL=https://<backend-domain>` (**build-time**)
+4. Generate public domain — this is your **demo URL** (e.g. `https://bookleaf.up.railway.app`)
 
 ### Step 6 — Run migrations & seed
 
@@ -449,7 +448,7 @@ Database  →  Neon free tier (external Postgres)
 
 | Service | Platform | Config |
 |---------|----------|--------|
-| `apps/frontend` | Vercel | Framework: Vite; `VITE_API_URL` → Render backend URL |
+| `apps/frontend` | Vercel | Framework: Next.js; `NEXT_PUBLIC_API_URL` → Render backend URL |
 | `apps/backend` | Render | Root: `apps/backend`; env: `DATABASE_URL` from Neon |
 | `apps/ai-service` | Render | Root: `apps/ai-service`; **no public URL** — use Render private service or restrict by `AI_SERVICE_API_KEY` |
 | PostgreSQL | Neon | Free project; connection string in both backend env |
@@ -510,10 +509,9 @@ Protect all `/v1/*` routes with `X-API-Key` header check.
 
 | Framework | Build | Serve |
 |-----------|-------|-------|
-| Vite + React | `npm run build` → `dist/` | `serve -s dist` or nginx |
-| Next.js (static) | `next build && next export` | same |
+| Next.js 15 (this repo) | `next build` → `.next/` | `next start` or Docker image |
 
-Point all API calls to `VITE_API_URL` — never embed OpenAI key.
+Point all API calls to `NEXT_PUBLIC_API_URL` — never embed an LLM API key in the frontend bundle.
 
 ---
 
@@ -629,15 +627,15 @@ Railway auto-deploys on push to `main` — no extra CD config needed.
 
 Before sharing URL with evaluators:
 
-- [ ] Live URL loads frontend without errors
+- [x] Live URL loads frontend without errors — [https://bookleaf.up.railway.app](https://bookleaf.up.railway.app)
 - [ ] Author login works (`priya.sharma@email.com` + seed password)
 - [ ] Admin login works
 - [ ] Author sees only own books (data isolation)
 - [ ] Ticket create → AI classification appears within ~5s
-- [ ] Admin sees AI draft on ticket open
+- [ ] Admin can generate AI draft on ticket detail page (click **Generate Draft**)
 - [ ] AI failure path tested (invalid key / budget cap → ticket still created)
 - [ ] In-production books (BK013, BK015) display correctly
-- [ ] README has: local setup, architecture, AI strategy, test credentials
+- [x] README has: local setup, architecture, AI strategy, test credentials
 - [ ] Gemini key set; AI classify + draft working with fallbacks
 - [ ] Private repo + evaluator added as collaborator
 
@@ -665,21 +663,21 @@ Before sharing URL with evaluators:
 
 ---
 
-## Quick Reference — URLs to Document in README
+## Quick Reference — URLs documented in README
 
 ```markdown
 ## Live Demo
-- **App URL:** https://<frontend>.up.railway.app
-- **API URL:** https://<backend>.up.railway.app
+- **App URL:** https://bookleaf.up.railway.app
+- **Walkthrough:** docs/USER_GUIDE.md
 
 ## Test Credentials
 | Role | Email | Password |
 |------|-------|----------|
-| Author | priya.sharma@email.com | (see seed) |
-| Admin | admin@bookleaf.com | (see seed) |
+| Author | priya.sharma@email.com | Password123! |
+| Admin | admin@bookleaf.com | Password123! |
 
 ## Architecture
-- Monorepo: frontend (React) + backend (Fastify) + ai-service (FastAPI)
+- Monorepo: frontend (Next.js) + backend (Fastify) + ai-service (FastAPI)
 - Database: PostgreSQL (single instance)
 - AI: gemini-flash-latest via isolated Python service
 - Deployment: Railway Hobby (~$0/month within usage credits)
@@ -689,4 +687,5 @@ Before sharing URL with evaluators:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2025-06-19 | Initial deployment guide — monorepo, Railway primary, $5 OpenAI budget strategy |
+| 1.1 | 2025-06-21 | Live demo URL, Next.js stack note, draft-on-click checklist wording |
+| 1.0 | 2025-06-19 | Initial deployment guide — monorepo, Railway primary, Gemini budget strategy |

@@ -2,6 +2,17 @@
 
 Monorepo for the BookLeaf Author Support & Communication Portal assignment.
 
+## Live Demo
+
+| | URL |
+|---|-----|
+| **App** | [https://bookleaf.up.railway.app](https://bookleaf.up.railway.app) |
+| **User guide** | [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) — step-by-step author & admin walkthrough |
+
+Sign in with the [test accounts](#test-accounts) below. The backend API is not exposed as a separate public URL for evaluators; the frontend calls it via `NEXT_PUBLIC_API_URL` on Railway.
+
+> **Cold start:** Railway hobby tier may take 10–30 seconds on first load after idle.
+
 ## Architecture
 
 ```
@@ -68,7 +79,7 @@ npm run dev:ai
 
 ## Folder Structure
 
-See [FOLDER_STRUCTURE_PRD.md](./FOLDER_STRUCTURE_PRD.md) and [docs/FOLDER_STRUCTURE_PRD.md](./docs/FOLDER_STRUCTURE_PRD.md).
+See [docs/FOLDER_STRUCTURE_PRD.md](./docs/FOLDER_STRUCTURE_PRD.md).
 
 ### Frontend (Next.js 15 App Router)
 
@@ -78,6 +89,8 @@ See [FOLDER_STRUCTURE_PRD.md](./FOLDER_STRUCTURE_PRD.md) and [docs/FOLDER_STRUCT
 | `/author/books` | `src/views/author/MyBooksPage.tsx` |
 | `/author/tickets/new` | `src/views/author/SubmitTicketPage.tsx` |
 | `/author/tickets` | `src/views/author/MyTicketsPage.tsx` |
+| `/author/tickets/[id]` | `src/views/author/AuthorTicketDetailPage.tsx` |
+| `/author/books/[id]` | `src/views/author/BookDetailPage.tsx` |
 | `/admin/tickets` | `src/views/admin/TicketQueuePage.tsx` |
 | `/admin/tickets/[id]` | `src/views/admin/TicketDetailPage.tsx` |
 
@@ -201,18 +214,13 @@ Or from your terminal (after `npx @railway/cli login` and linking the project):
 GEMINI_API_KEY=AIza...your-key... bash scripts/railway-set-ai-env.sh
 ```
 
-**Live demo URLs** — add after deploy:
-
-| | URL |
-|---|-----|
-| App | _pending_ |
-| API | _pending_ |
-
 Full guide: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
 ## Related Docs
 
-- [ASSIGNMENT_FINDINGS.md](./ASSIGNMENT_FINDINGS.md)
-- [DB_DESIGN.md](./DB_DESIGN.md)
-- [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
-- [WRITEUP.md](./WRITEUP.md)
+- [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) — live demo walkthrough
+- [docs/ASSIGNMENT_FINDINGS.md](./docs/ASSIGNMENT_FINDINGS.md) — assignment requirements analysis
+- [docs/DB_DESIGN.md](./docs/DB_DESIGN.md) — schema & seed design
+- [docs/AI_INFRA.md](./docs/AI_INFRA.md) — Gemini integration & provider choice
+- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) — Railway deployment
+- [WRITEUP.md](./WRITEUP.md) — priorities, trade-offs, production next steps

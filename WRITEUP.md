@@ -2,6 +2,8 @@
 
 > One-page summary of priorities, trade-offs, and production evolution.
 
+**Live demo:** [https://bookleaf.up.railway.app](https://bookleaf.up.railway.app) · See [docs/USER_GUIDE.md](./docs/USER_GUIDE.md) for a guided walkthrough.
+
 ## Priorities (5-day scope)
 
 1. **Data correctness** — Seed 10 authors / 18 books from provided JSON; author data isolation via JWT-scoped API
@@ -17,7 +19,7 @@
 | Real-time | SSE with query-token auth + 5s poll | EventSource cannot send Authorization header; acceptable for assignment |
 | Validation | Zod schemas → runtime + OpenAPI generate | Single source of truth; `npm run openapi:generate` |
 | ORM | Raw SQL + `pg` | Transparent queries for assignment evaluators |
-| AI drafts | On-demand generation + DB cache | Avoids Gemini API cost on every admin page view |
+| AI drafts | On-demand generation + DB cache | Assignment suggests draft on ticket open; Generate-on-click avoids API cost on every page view while still giving admins an editable KB-grounded draft |
 | Attachments | Local filesystem (`uploads/`) | Simple for dev; S3/volume mount for production |
 | UI | Functional Tailwind | Assignment allows non-pixel-perfect UI |
 
@@ -29,6 +31,11 @@
 - **Combined classify+prioritize:** one call returns both fields; trade-off is slightly less granular prompts
 - **KB sections:** injected by ticket category, not full knowledge base paste
 - **Cost cap:** in-memory daily tracker in AI service; production would persist to Redis/DB
+- **Auto-acknowledgement:** bonus UX — async BullMQ job posts a short support message after ticket create (not required by assignment)
+
+## Assignment coverage
+
+All required flows are implemented: author/admin portals, ticket lifecycle, AI classify + prioritize + draft, RBAC, real-time updates (SSE + polling), OpenAPI docs, seeded sample dataset (10 authors / 18 books), and Railway deployment. File attachments and author follow-up replies are implemented as extras beyond the minimum spec.
 
 ## Production Next Steps
 
