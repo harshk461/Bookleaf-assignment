@@ -1,11 +1,13 @@
 import json
 import time
 
-import google.generativeai as genai
-from google.generativeai.types import GenerationConfig
+from google import genai
+from google.genai import types
 
 from app.config.settings import settings
 from app.services.cost_tracker import estimate_cost, is_over_budget, track_usage
+
+_client: genai.Client | None = None
 
 
 class AiCallResult:
@@ -37,6 +39,15 @@ def _is_configured() -> bool:
     return not any(key.startswith(p) or p in key for p in placeholders)
 
 
+def _get_client() -> genai.Client | None:
+    global _client
+    if not _is_configured():
+        return None
+    if _client is None:
+        _client = genai.Client(api_key=settings.gemini_api_key)
+    return _client
+
+
 def _usage_counts(response) -> tuple[int, int]:
     usage = getattr(response, "usage_metadata", None)
     if not usage:
@@ -49,19 +60,17 @@ def _usage_counts(response) -> tuple[int, int]:
 def chat_json(system: str, user: str, max_tokens: int) -> AiCallResult | None:
     if is_over_budget(settings.max_daily_spend_usd):
         return None
-    if not _is_configured():
+    client = _get_client()
+    if not client:
         return None
 
-    genai.configure(api_key=settings.gemini_api_key)
-    model = genai.GenerativeModel(
-        settings.gemini_model,
-        system_instruction=system,
-    )
     start = time.perf_counter()
     try:
-        response = model.generate_content(
-            user,
-            generation_config=GenerationConfig(
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=user,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
                 max_output_tokens=max_tokens,
                 response_mime_type="application/json",
             ),
@@ -86,19 +95,19 @@ def chat_json(system: str, user: str, max_tokens: int) -> AiCallResult | None:
 def chat_text(system: str, user: str, max_tokens: int) -> AiCallResult | None:
     if is_over_budget(settings.max_daily_spend_usd):
         return None
-    if not _is_configured():
+    client = _get_client()
+    if not client:
         return None
 
-    genai.configure(api_key=settings.gemini_api_key)
-    model = genai.GenerativeModel(
-        settings.gemini_model,
-        system_instruction=system,
-    )
     start = time.perf_counter()
     try:
-        response = model.generate_content(
-            user,
-            generation_config=GenerationConfig(max_output_tokens=max_tokens),
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=user,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                max_output_tokens=max_tokens,
+            ),
         )
     except Exception:
         return None
