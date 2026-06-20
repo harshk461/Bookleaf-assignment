@@ -36,7 +36,6 @@ async function main() {
     } else {
       logger.warn('REDIS_URL not set — acknowledgement worker disabled');
     }
-    await checkAiServiceReachable();
   } catch (err) {
     logger.error({ err }, 'Full app failed to start — running health-only mode');
     app = Fastify({ logger: true });
@@ -59,6 +58,7 @@ async function main() {
 
   await app.listen({ port, host: '0.0.0.0' });
   logger.info({ port, redis: Boolean(process.env.REDIS_URL) }, 'Backend listening');
+  void checkAiServiceReachable();
 }
 
 main().catch(async (err) => {
