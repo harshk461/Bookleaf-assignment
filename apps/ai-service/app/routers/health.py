@@ -6,6 +6,11 @@ from app.config.settings import settings
 router = APIRouter()
 
 
+@router.get("/")
+def root():
+    return {"status": "ok", "service": "ai-service"}
+
+
 @router.get("/health")
 def health():
     return {

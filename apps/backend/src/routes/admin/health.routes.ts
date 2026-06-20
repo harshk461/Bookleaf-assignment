@@ -1,9 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { probeAiServiceHealth } from '../../services/ai-client.service.js';
 
-export async function healthRoutes(app: FastifyInstance) {
+export function registerLivenessRoute(app: FastifyInstance) {
   app.get('/health', async () => ({ status: 'ok', service: 'backend' }));
+}
 
+export async function registerHealthRoutes(app: FastifyInstance) {
   app.get('/health/ai', async () => {
     const ai = await probeAiServiceHealth();
     return {

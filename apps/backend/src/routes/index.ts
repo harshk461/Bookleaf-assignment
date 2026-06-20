@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 
 export async function registerRoutes(app: FastifyInstance) {
-  const { healthRoutes } = await import('./admin/health.routes.js');
-  await app.register(healthRoutes);
+  const { registerHealthRoutes } = await import('./admin/health.routes.js');
+  await registerHealthRoutes(app);
 
   const [
     { authRoutes },

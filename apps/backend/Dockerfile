@@ -18,6 +18,7 @@ COPY --from=builder /app/apps/backend/dist ./dist
 COPY --from=builder /app/apps/backend/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 ENV PORT=4000
+ENV HOST=0.0.0.0
 ENV UPLOAD_DIR=/data/uploads
 EXPOSE 4000
 CMD ["node", "dist/index.js"]

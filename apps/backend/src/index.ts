@@ -1,48 +1,50 @@
 import 'dotenv/config';
 import Fastify from 'fastify';
-import { buildApp } from './app.js';
+import { registerAppFeatures } from './app.js';
 import { closeDb } from './db/index.js';
 import { closeAckWorker, startAckWorker } from './queues/acknowledgement.queue.js';
-import { getAiServiceBaseUrl, probeAiServiceHealth } from './services/ai-client.service.js';
+import { registerLivenessRoute } from './routes/admin/health.routes.js';
+import { probeAiServiceHealth } from './services/ai-client.service.js';
 import { logger } from './utils/logger.js';
-
-async function checkAiServiceReachable(): Promise<void> {
-  const result = await probeAiServiceHealth();
-  if (result.ok) {
-    logger.info(
-      { aiServiceUrl: result.url, geminiConfigured: result.geminiConfigured },
-      'AI service reachable',
-    );
-    return;
-  }
-  logger.warn(
-    {
-      aiServiceUrl: getAiServiceBaseUrl(),
-      triedUrls: result.triedUrls,
-    },
-    'AI service unreachable — set AI_SERVICE_PUBLIC_URL on backend or fix private networking',
-  );
-}
 
 async function main() {
   const port = Number(process.env.PORT) || 4000;
-  let app;
+  const app = Fastify({ logger: true, ignoreTrailingSlash: true });
+
+  registerLivenessRoute(app);
+
+  await app.listen({ port, host: '0.0.0.0' });
+  logger.info({ port, redis: Boolean(process.env.REDIS_URL) }, 'Backend listening');
 
   try {
-    app = await buildApp();
+    await registerAppFeatures(app);
     if (process.env.REDIS_URL) {
-      startAckWorker();
+      try {
+        startAckWorker();
+      } catch (err) {
+        logger.warn({ err }, 'Acknowledgement worker failed to start — API will run without queue');
+      }
     } else {
       logger.warn('REDIS_URL not set — acknowledgement worker disabled');
     }
+    void probeAiServiceHealth().then((result) => {
+      if (result.ok) {
+        logger.info(
+          { aiServiceUrl: result.url, geminiConfigured: result.geminiConfigured },
+          'AI service reachable',
+        );
+      } else {
+        logger.warn(
+          { triedUrls: result.triedUrls },
+          'AI service unreachable — set AI_SERVICE_URL to the public https:// domain if private networking fails',
+        );
+      }
+    });
   } catch (err) {
-    logger.error({ err }, 'Full app failed to start — running health-only mode');
-    app = Fastify({ logger: true });
-    app.get('/health', async () => ({
-      status: 'degraded',
-      service: 'backend',
-      message: 'Missing or invalid environment variables',
-    }));
+    logger.error(
+      { err },
+      'Backend feature registration failed — /health responds but API routes are unavailable',
+    );
   }
 
   const shutdown = async () => {
@@ -54,10 +56,6 @@ async function main() {
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
-
-  await app.listen({ port, host: '0.0.0.0' });
-  logger.info({ port, redis: Boolean(process.env.REDIS_URL) }, 'Backend listening');
-  void checkAiServiceReachable();
 }
 
 main().catch(async (err) => {
