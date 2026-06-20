@@ -101,6 +101,29 @@ describe('tickets', () => {
     assert.ok(Array.isArray(res.json()));
   });
 
+  it('admin can generate AI draft via POST', async () => {
+    const listRes = await app.inject({
+      method: 'GET',
+      url: '/api/admin/tickets',
+      headers: authHeader(adminToken),
+    });
+    const tickets = listRes.json() as Array<{ id: string }>;
+    assert.ok(tickets.length > 0);
+
+    const draftRes = await app.inject({
+      method: 'POST',
+      url: `/api/admin/tickets/${tickets[0].id}/draft`,
+      headers: {
+        ...authHeader(adminToken),
+        'content-type': 'application/json',
+      },
+      payload: {},
+    });
+    assert.equal(draftRes.statusCode, 200);
+    const body = draftRes.json() as { aiDraft: string; aiDraftFailed?: boolean };
+    assert.ok(body.aiDraft.length > 0);
+  });
+
   it('admin can override ticket category', async () => {
     const listRes = await app.inject({
       method: 'GET',

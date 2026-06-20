@@ -67,6 +67,7 @@ export async function fetchAdminTicket(id: string) {
 export async function generateAdminDraft(id: string) {
   return api<{ aiDraft: string; aiDraftFailed?: boolean }>(API_PATHS.admin.ticketDraft(id), {
     method: "POST",
+    body: JSON.stringify({}),
   });
 }
 

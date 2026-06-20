@@ -11,7 +11,7 @@ import { getMaxUploadBytes } from './services/attachments.service.js';
 
 export async function buildApp() {
   const env = loadEnv();
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: true, ignoreTrailingSlash: true });
 
   await app.register(cors, { origin: env.CORS_ORIGIN, credentials: true });
   await app.register(jwt, { secret: env.JWT_SECRET });

@@ -95,7 +95,7 @@ export async function classifyAndPrioritize(input: {
     };
   } catch (err) {
     logger.warn(
-      { err, subject: input.subject, endpoint: 'classify' },
+      { err, subject: input.subject, endpoint: 'classify', aiServiceUrl: aiServiceUrl() },
       'AI classify failed — using fallback category/priority',
     );
     return {
@@ -141,11 +141,11 @@ export async function generateDraft(input: {
     };
   } catch (err) {
     if (err instanceof AppError) {
-      logger.warn({ err, subject: input.subject, endpoint: 'draft' }, 'AI draft budget exceeded');
+      logger.warn({ err, subject: input.subject, endpoint: 'draft', aiServiceUrl: aiServiceUrl() }, 'AI draft budget exceeded');
       throw err;
     }
     logger.warn(
-      { err, subject: input.subject, endpoint: 'draft' },
+      { err, subject: input.subject, endpoint: 'draft', aiServiceUrl: aiServiceUrl() },
       'AI draft failed — using fallback response',
     );
     return {
@@ -211,7 +211,7 @@ export async function generateAcknowledgement(input: {
     };
   } catch (err) {
     logger.warn(
-      { err, ticketNumber: input.ticketNumber, endpoint: 'acknowledge' },
+      { err, ticketNumber: input.ticketNumber, endpoint: 'acknowledge', aiServiceUrl: aiServiceUrl() },
       'AI acknowledge failed — using fallback response',
     );
     return { content: fallbackContent, failed: true };

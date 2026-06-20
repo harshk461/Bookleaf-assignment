@@ -3,7 +3,27 @@ import Fastify from 'fastify';
 import { buildApp } from './app.js';
 import { closeDb } from './db/index.js';
 import { closeAckWorker, startAckWorker } from './queues/acknowledgement.queue.js';
+import { loadEnv } from './config/env.js';
 import { logger } from './utils/logger.js';
+
+async function checkAiServiceReachable(): Promise<void> {
+  const aiServiceUrl = loadEnv().AI_SERVICE_URL;
+  try {
+    const res = await fetch(`${aiServiceUrl}/health`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      logger.info({ aiServiceUrl }, 'AI service reachable');
+    } else {
+      logger.warn({ aiServiceUrl, status: res.status }, 'AI service health check returned non-OK status');
+    }
+  } catch (err) {
+    logger.warn(
+      { err, aiServiceUrl },
+      'AI service unreachable — classify/draft/acknowledge will use fallbacks until fixed',
+    );
+  }
+}
 
 async function main() {
   const port = Number(process.env.PORT) || 4000;
@@ -16,6 +36,7 @@ async function main() {
     } else {
       logger.warn('REDIS_URL not set — acknowledgement worker disabled');
     }
+    await checkAiServiceReachable();
   } catch (err) {
     logger.error({ err }, 'Full app failed to start — running health-only mode');
     app = Fastify({ logger: true });

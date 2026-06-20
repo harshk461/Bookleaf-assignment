@@ -17,19 +17,6 @@ export async function adminTicketsRoutes(app: FastifyInstance) {
     preHandler: [app.authenticate, app.requireAdmin, validateQuery(adminTicketsQuerySchema)],
   }, controller.streamTickets);
 
-  app.get('/api/admin/tickets/:id', {
-    preHandler: [app.authenticate, app.requireAdmin, validateParams(ticketIdParamsSchema)],
-  }, controller.getTicket);
-
-  app.patch('/api/admin/tickets/:id', {
-    preHandler: [
-      app.authenticate,
-      app.requireAdmin,
-      validateParams(ticketIdParamsSchema),
-      validateBody(patchTicketBodySchema),
-    ],
-  }, controller.patchTicket);
-
   app.post('/api/admin/tickets/:id/draft', {
     preHandler: [app.authenticate, app.requireAdmin, validateParams(ticketIdParamsSchema)],
   }, controller.generateDraft);
@@ -55,6 +42,19 @@ export async function adminTicketsRoutes(app: FastifyInstance) {
       validateBody(messageBodySchema),
     ],
   }, controller.addNote);
+
+  app.get('/api/admin/tickets/:id', {
+    preHandler: [app.authenticate, app.requireAdmin, validateParams(ticketIdParamsSchema)],
+  }, controller.getTicket);
+
+  app.patch('/api/admin/tickets/:id', {
+    preHandler: [
+      app.authenticate,
+      app.requireAdmin,
+      validateParams(ticketIdParamsSchema),
+      validateBody(patchTicketBodySchema),
+    ],
+  }, controller.patchTicket);
 
   app.get('/api/admin/tickets/:id/attachments/:attachmentId', {
     preHandler: [app.authenticate, app.requireAdmin],
