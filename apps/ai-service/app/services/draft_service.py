@@ -5,6 +5,7 @@ from app.prompts.kb_sections import royalty, isbn, printing, distribution, produ
 from app.prompts.system_base import SYSTEM_BASE
 from app.services.gemini_client import chat_text
 from app.utils.fallback import fallback_draft
+from app.utils.logger import logger
 from app.utils.token_budget import truncate_description
 
 KB_MAP = {
@@ -40,8 +41,15 @@ def draft_response(req: DraftRequest) -> DraftResponse:
 
     result = chat_text(f"{SYSTEM_BASE}\n{DRAFT_PROMPT}", user, MAX_TOKENS_DRAFT)
     if not result or not result.content:
+        logger.warning("Draft fallback for subject=%r category=%s", req.subject, req.category)
         return DraftResponse(content=fallback_draft())
 
+    logger.info(
+        "Draft ok subject=%r category=%s model=%s",
+        req.subject,
+        req.category,
+        result.model,
+    )
     return DraftResponse(
         content=result.content,
         input_tokens=result.input_tokens,

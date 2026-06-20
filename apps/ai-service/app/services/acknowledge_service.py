@@ -4,6 +4,7 @@ from app.prompts.acknowledge_prompt import ACKNOWLEDGE_PROMPT
 from app.prompts.system_base import SYSTEM_BASE
 from app.services.gemini_client import chat_text
 from app.utils.fallback import fallback_acknowledgement
+from app.utils.logger import logger
 from app.utils.token_budget import truncate_description
 
 
@@ -24,8 +25,10 @@ def acknowledge_ticket(req: AcknowledgeRequest) -> AcknowledgeResponse:
 
     result = chat_text(f"{SYSTEM_BASE}\n{ACKNOWLEDGE_PROMPT}", user, MAX_TOKENS_ACKNOWLEDGE)
     if not result or not result.content:
+        logger.warning("Acknowledge fallback for ticket %s", req.ticket_number)
         return AcknowledgeResponse(content=fallback_acknowledgement(req.ticket_number))
 
+    logger.info("Acknowledge ok ticket=%s model=%s", req.ticket_number, result.model)
     return AcknowledgeResponse(
         content=result.content,
         input_tokens=result.input_tokens,

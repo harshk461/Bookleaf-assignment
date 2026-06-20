@@ -6,6 +6,7 @@ import * as aiLogsRepo from '../repositories/ai-logs.repository.js';
 import * as authorsRepo from '../repositories/authors.repository.js';
 import { classifyAndPrioritize, generateDraft } from './ai-client.service.js';
 import { enqueueAcknowledgement } from '../queues/acknowledgement.queue.js';
+import { logger } from '../utils/logger.js';
 import {
   getMaxUploadBytes,
   saveTicketFile,
@@ -121,6 +122,13 @@ export async function createTicket(input: {
     bookTitle,
   });
 
+  if (ai.failed) {
+    logger.warn(
+      { ticketId, ticketNumber, subject: input.subject },
+      'Ticket created with AI classification fallback',
+    );
+  }
+
   await ticketsRepo.updateTicketAiMetadata(ticketId, {
     category: ai.category,
     priority: ai.priority,
@@ -153,6 +161,18 @@ export async function createTicket(input: {
     bookTitle,
     authorName: authorUser?.name ? String(authorUser.name) : null,
   });
+
+  logger.info(
+    {
+      ticketId,
+      ticketNumber: String(ticket.ticket_number ?? ticketNumber),
+      authorRef: input.authorRef,
+      category: ai.category,
+      priority: ai.priority,
+      hasAttachment: Boolean(input.file),
+    },
+    'Ticket created',
+  );
 
   return getAuthorTicket(input.authorRef, ticketId);
 }
@@ -246,6 +266,17 @@ export async function generateAdminDraft(ticketId: string, adminId: string) {
     responsePayload: { contentLength: draft.content.length },
   });
 
+  logger.info(
+    {
+      ticketId,
+      adminId,
+      failed: draft.failed,
+      model: draft.model,
+      latencyMs: draft.latencyMs,
+    },
+    'Admin draft generated',
+  );
+
   return {
     aiDraft: draft.content,
     aiDraftFailed: draft.failed,
@@ -279,6 +310,7 @@ export async function addAdminResponse(ticketId: string, adminId: string, conten
     senderRef: adminId,
     content,
   });
+  logger.info({ ticketId, adminId }, 'Admin response sent');
   return getAdminTicket(ticketId);
 }
 
@@ -303,8 +335,10 @@ export async function addAuthorMessage(
 
   if (ticket.status === 'resolved') {
     await ticketsRepo.patchTicket(ticketId, { status: 'open' });
+    logger.info({ ticketId, authorRef }, 'Ticket reopened after author reply');
   }
 
+  logger.info({ ticketId, authorRef, userId }, 'Author message sent');
   return getAuthorTicket(authorRef, ticketId);
 }
 

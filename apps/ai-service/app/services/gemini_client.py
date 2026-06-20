@@ -8,6 +8,7 @@ from google.genai import types
 
 from app.config.settings import settings
 from app.services.cost_tracker import estimate_cost, is_over_budget, track_usage
+from app.utils.logger import logger
 
 _client: genai.Client | None = None
 
@@ -101,9 +102,11 @@ def _parse_json(text: str | None) -> dict | None:
 
 def chat_json(system: str, user: str, max_tokens: int) -> AiCallResult | None:
     if is_over_budget(settings.max_daily_spend_usd):
+        logger.warning("Daily AI budget exceeded — skipping chat_json call")
         return None
     client = _get_client()
     if not client:
+        logger.warning("Gemini client not configured — skipping chat_json call")
         return None
 
     start = time.perf_counter()
@@ -119,6 +122,7 @@ def chat_json(system: str, user: str, max_tokens: int) -> AiCallResult | None:
             ),
         )
     except Exception:
+        logger.exception("Gemini chat_json request failed")
         return None
 
     latency_ms = int((time.perf_counter() - start) * 1000)
@@ -129,8 +133,20 @@ def chat_json(system: str, user: str, max_tokens: int) -> AiCallResult | None:
     content = _extract_text(response)
     data = _parse_json(content)
     if not data:
+        logger.warning(
+            "Gemini chat_json returned invalid JSON (latency_ms=%s, model=%s)",
+            latency_ms,
+            model,
+        )
         return None
 
+    logger.info(
+        "Gemini chat_json ok model=%s latency_ms=%s input_tokens=%s output_tokens=%s",
+        model,
+        latency_ms,
+        input_tokens,
+        output_tokens,
+    )
     return AiCallResult(
         data=data,
         input_tokens=input_tokens,
@@ -142,9 +158,11 @@ def chat_json(system: str, user: str, max_tokens: int) -> AiCallResult | None:
 
 def chat_text(system: str, user: str, max_tokens: int) -> AiCallResult | None:
     if is_over_budget(settings.max_daily_spend_usd):
+        logger.warning("Daily AI budget exceeded — skipping chat_text call")
         return None
     client = _get_client()
     if not client:
+        logger.warning("Gemini client not configured — skipping chat_text call")
         return None
 
     start = time.perf_counter()
@@ -159,6 +177,7 @@ def chat_text(system: str, user: str, max_tokens: int) -> AiCallResult | None:
             ),
         )
     except Exception:
+        logger.exception("Gemini chat_text request failed")
         return None
 
     latency_ms = int((time.perf_counter() - start) * 1000)
@@ -167,8 +186,20 @@ def chat_text(system: str, user: str, max_tokens: int) -> AiCallResult | None:
     track_usage(input_tokens, output_tokens, model)
     content = _extract_text(response)
     if not content:
+        logger.warning(
+            "Gemini chat_text returned empty content (latency_ms=%s, model=%s)",
+            latency_ms,
+            model,
+        )
         return None
 
+    logger.info(
+        "Gemini chat_text ok model=%s latency_ms=%s input_tokens=%s output_tokens=%s",
+        model,
+        latency_ms,
+        input_tokens,
+        output_tokens,
+    )
     return AiCallResult(
         content=content,
         input_tokens=input_tokens,

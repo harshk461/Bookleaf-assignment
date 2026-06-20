@@ -2,6 +2,7 @@ import * as aiLogsRepo from '../repositories/ai-logs.repository.js';
 import * as authorsRepo from '../repositories/authors.repository.js';
 import * as messagesRepo from '../repositories/messages.repository.js';
 import { generateAcknowledgement } from '../services/ai-client.service.js';
+import { logger } from '../utils/logger.js';
 import type { AcknowledgementJobPayload } from './acknowledgement.types.js';
 
 export async function hasAcknowledgementBeenSent(ticketId: string): Promise<boolean> {
@@ -13,6 +14,10 @@ export async function processAcknowledgementJob(
   payload: AcknowledgementJobPayload,
 ): Promise<void> {
   if (await hasAcknowledgementBeenSent(payload.ticketId)) {
+    logger.info(
+      { ticketId: payload.ticketId, ticketNumber: payload.ticketNumber },
+      'Acknowledgement already sent — skipping duplicate job',
+    );
     return;
   }
 
@@ -41,6 +46,16 @@ export async function processAcknowledgementJob(
 
   const systemAdminId = await authorsRepo.findDefaultAdminUserId();
   if (!systemAdminId || !ack.content) {
+    logger.warn(
+      {
+        ticketId: payload.ticketId,
+        ticketNumber: payload.ticketNumber,
+        hasAdmin: Boolean(systemAdminId),
+        hasContent: Boolean(ack.content),
+        failed: ack.failed,
+      },
+      'Acknowledgement generated but admin message not inserted',
+    );
     return;
   }
 
@@ -50,4 +65,15 @@ export async function processAcknowledgementJob(
     senderRef: systemAdminId,
     content: ack.content,
   });
+
+  logger.info(
+    {
+      ticketId: payload.ticketId,
+      ticketNumber: payload.ticketNumber,
+      failed: ack.failed,
+      model: ack.model,
+      latencyMs: ack.latencyMs,
+    },
+    'Ticket acknowledgement sent',
+  );
 }

@@ -1,6 +1,7 @@
 import { loadEnv } from '../config/env.js';
 import { DEFAULT_TICKET_CATEGORY, DEFAULT_TICKET_PRIORITY } from '../config/constants.js';
 import { AppError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 import type { TicketCategory, TicketPriority } from '@bookleaf/shared';
 
 function aiServiceUrl(): string {
@@ -92,7 +93,11 @@ export async function classifyAndPrioritize(input: {
       latencyMs: data.latency_ms,
       model: data.model,
     };
-  } catch {
+  } catch (err) {
+    logger.warn(
+      { err, subject: input.subject, endpoint: 'classify' },
+      'AI classify failed — using fallback category/priority',
+    );
     return {
       category: DEFAULT_TICKET_CATEGORY,
       priority: DEFAULT_TICKET_PRIORITY,
@@ -135,7 +140,14 @@ export async function generateDraft(input: {
       model: data.model,
     };
   } catch (err) {
-    if (err instanceof AppError) throw err;
+    if (err instanceof AppError) {
+      logger.warn({ err, subject: input.subject, endpoint: 'draft' }, 'AI draft budget exceeded');
+      throw err;
+    }
+    logger.warn(
+      { err, subject: input.subject, endpoint: 'draft' },
+      'AI draft failed — using fallback response',
+    );
     return {
       content:
         'Thank you for reaching out to BookLeaf support. We are reviewing your query and will respond shortly.',
@@ -171,10 +183,23 @@ export async function generateAcknowledgement(input: {
       }),
     });
     if (res.status === 503) {
+      logger.warn(
+        { ticketNumber: input.ticketNumber, endpoint: 'acknowledge' },
+        'AI acknowledge budget exceeded — using fallback',
+      );
       return { content: fallbackContent, failed: true };
     }
     if (!res.ok) throw new Error(`AI service returned ${res.status}`);
     const data = (await res.json()) as AiAcknowledgeResponse;
+    logger.info(
+      {
+        ticketNumber: input.ticketNumber,
+        endpoint: 'acknowledge',
+        model: data.model,
+        latencyMs: data.latency_ms,
+      },
+      'AI acknowledgement generated',
+    );
     return {
       content: data.content,
       failed: false,
@@ -184,7 +209,11 @@ export async function generateAcknowledgement(input: {
       latencyMs: data.latency_ms,
       model: data.model,
     };
-  } catch {
+  } catch (err) {
+    logger.warn(
+      { err, ticketNumber: input.ticketNumber, endpoint: 'acknowledge' },
+      'AI acknowledge failed — using fallback response',
+    );
     return { content: fallbackContent, failed: true };
   }
 }

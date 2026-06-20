@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.utils.logger import logger
+
 _daily_spend_usd = 0.0
 _current_date: str | None = None
 _tracker_path: str | None = None
@@ -83,7 +85,14 @@ def track_usage(input_tokens: int, output_tokens: int, model: str) -> None:
 def is_over_budget(max_daily: float) -> bool:
     if _current_date != _utc_date():
         _load()
-    return _daily_spend_usd >= max_daily
+    over = _daily_spend_usd >= max_daily
+    if over:
+        logger.warning(
+            "Daily AI spend limit reached (spend_usd=%.4f max=%.2f)",
+            _daily_spend_usd,
+            max_daily,
+        )
+    return over
 
 
 def reset_daily_spend() -> None:

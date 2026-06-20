@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { buildApp } from './app.js';
 import { closeDb } from './db/index.js';
 import { closeAckWorker, startAckWorker } from './queues/acknowledgement.queue.js';
+import { logger } from './utils/logger.js';
 
 async function main() {
   const port = Number(process.env.PORT) || 4000;
@@ -12,9 +13,11 @@ async function main() {
     app = await buildApp();
     if (process.env.REDIS_URL) {
       startAckWorker();
+    } else {
+      logger.warn('REDIS_URL not set — acknowledgement worker disabled');
     }
   } catch (err) {
-    console.error('Full app failed to start — running health-only mode:', err);
+    logger.error({ err }, 'Full app failed to start — running health-only mode');
     app = Fastify({ logger: true });
     app.get('/health', async () => ({
       status: 'degraded',
@@ -24,6 +27,7 @@ async function main() {
   }
 
   const shutdown = async () => {
+    logger.info('Shutting down backend');
     await closeAckWorker();
     await app.close();
     await closeDb();
@@ -33,10 +37,11 @@ async function main() {
   process.on('SIGTERM', shutdown);
 
   await app.listen({ port, host: '0.0.0.0' });
+  logger.info({ port, redis: Boolean(process.env.REDIS_URL) }, 'Backend listening');
 }
 
 main().catch(async (err) => {
-  console.error(err);
+  logger.error({ err }, 'Backend failed to start');
   await closeAckWorker();
   await closeDb();
   process.exit(1);
