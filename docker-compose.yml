@@ -17,6 +17,18 @@ services:
     networks:
       - bookleaf
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bookleaf
+
   ai-service:
     build:
       context: .
@@ -47,6 +59,7 @@ services:
       DB_PROVIDER: ${DB_PROVIDER:-pg}
       DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
       AI_SERVICE_URL: http://ai-service:8000
+      REDIS_URL: redis://redis:6379
       CORS_ORIGIN: http://localhost:3000
       UPLOAD_DIR: /data/uploads
       MAX_UPLOAD_BYTES: 5242880
@@ -54,6 +67,8 @@ services:
       - backend_uploads:/data/uploads
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       ai-service:
         condition: service_started

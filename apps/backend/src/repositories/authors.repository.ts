@@ -19,3 +19,13 @@ export async function findUserById(id: string) {
     [id],
   );
 }
+
+export async function findDefaultAdminUserId(): Promise<string | null> {
+  const row = await getDb().queryOne<{ id: string }>(
+    `SELECT id FROM users
+     WHERE role = 'admin' AND is_active = TRUE AND deleted_at IS NULL
+     ORDER BY created_at ASC
+     LIMIT 1`,
+  );
+  return row?.id ?? null;
+}

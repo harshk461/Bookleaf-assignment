@@ -4,11 +4,16 @@ import * as ticketsService from '../services/tickets.service.js';
 import { readTicketFile } from '../services/attachments.service.js';
 import { requireAuthorScope } from '../middleware/scope-author.js';
 import { runSsePolling } from '../utils/sse-polling.js';
-import { createTicketBodySchema, ticketIdParamsSchema } from '../schemas/tickets.schema.js';
+import {
+  createTicketBodySchema,
+  messageBodySchema,
+  ticketIdParamsSchema,
+} from '../schemas/tickets.schema.js';
 import { AppError } from '../utils/errors.js';
 
 type CreateTicketBody = z.infer<typeof createTicketBodySchema>;
 type TicketIdParams = z.infer<typeof ticketIdParamsSchema>;
+type MessageBody = z.infer<typeof messageBodySchema>;
 
 export async function listTickets(request: FastifyRequest) {
   const authorRef = requireAuthorScope(request);
@@ -97,4 +102,11 @@ export async function streamTicketDetail(request: FastifyRequest, reply: Fastify
   runSsePolling(request, reply, 'ticket', () =>
     ticketsService.getAuthorTicket(authorRef, id),
   );
+}
+
+export async function addAuthorMessage(request: FastifyRequest) {
+  const authorRef = requireAuthorScope(request);
+  const { id } = request.validatedParams as TicketIdParams;
+  const { content } = request.validatedBody as MessageBody;
+  return ticketsService.addAuthorMessage(authorRef, request.user.sub, id, content);
 }

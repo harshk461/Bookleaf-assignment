@@ -144,6 +144,18 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'post',
+  path: '/api/author/tickets/{id}/messages',
+  summary: 'Send author follow-up message',
+  security: [{ [bearerAuth.name]: [] }],
+  request: {
+    params: ticketIdParamsSchema,
+    body: { content: { 'application/json': { schema: messageBodySchema } } },
+  },
+  responses: { 200: { description: 'Updated ticket' }, 400: errorResponse, 404: errorResponse },
+});
+
+registry.registerPath({
+  method: 'post',
   path: '/api/author/tickets',
   summary: 'Create ticket (triggers AI classify)',
   security: [{ [bearerAuth.name]: [] }],

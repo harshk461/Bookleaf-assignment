@@ -15,7 +15,7 @@
     "openapi:generate": "npm run openapi:generate -w apps/backend",
     "dev:frontend": "PORT=3000 npm run dev -w apps/frontend",
     "dev:backend": "PORT=4000 npm run dev -w apps/backend",
-    "dev:ai": "cd apps/ai-service && PORT=8000 uvicorn app.main:app --reload --port 8000"
+    "dev:ai": "bash scripts/run-ai-service.sh"
   },
   "engines": {
     "node": ">=20"

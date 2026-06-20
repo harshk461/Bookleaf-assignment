@@ -40,7 +40,7 @@
 | Layer | Choice | Why |
 |-------|--------|-----|
 | **Hosting** | Railway (Hobby plan) | One monorepo, multiple services, managed Postgres, private networking — simplest ops for a 5-day assignment |
-| **AI model** | `gemini-2.0-flash` | Free-tier Gemini API; JSON output for classification; sufficient for support drafting |
+| **AI model** | `gemini-flash-latest` | Free-tier Gemini API; JSON output for classification; sufficient for support drafting |
 | **Real-time** | SSE or 5s polling | Avoids WebSocket infra complexity on free tiers |
 
 **Net infra cost (typical):** $0–$5/month if you stay within Railway Hobby's included $5 usage credit. Gemini free tier covers demo traffic; `MAX_DAILY_SPEND_USD` guards against runaway usage.
@@ -59,19 +59,21 @@
 │  │  Port: 3000  │                 │  Port: 4000  │                   │ │
 │  └──────────────┘                 └──────┬───────┘                   │ │
 │         ▲                                │                           │ │
-│         │ public URL                     │ SQL                       ▼ │
-│         │                                ▼                  ┌──────────────┐
-│         │                         ┌──────────────┐          │  AI Service  │
-│         │                         │  PostgreSQL  │          │  (FastAPI)   │
-│         │                         │  (Railway)   │          │  Port: 8000  │
-│         │                         └──────────────┘          └──────┬───────┘
-│         │                                                          │
+│         │ public URL              ┌──────┴───────┐   SQL               ▼ │
+│         │                         │    Redis     │          ┌──────────────┐
+│         │                         │  (BullMQ)    │          │  AI Service  │
+│         │                         └──────────────┘          │  (FastAPI)   │
+│         │                                ▲                  │  Port: 8000  │
+│         │                         ┌──────┴───────┐          └──────┬───────┘
+│         │                         │  PostgreSQL  │                 │
+│         │                         │  (Railway)   │                 │
+│         │                         └──────────────┘                 │
 └─────────┼──────────────────────────────────────────────────────────┼───┘
           │                                                          │
           │                                                          ▼
           │                                               ┌─────────────────┐
           └───────────────────────────────────────────────│  Google Gemini  │
-                                                          │ gemini-2.0-flash│
+                                                          │ gemini-flash-latest│
                                                           │  (env key only) │
                                                           └─────────────────┘
 ```
@@ -79,9 +81,10 @@
 **Request flow:**
 
 1. Author/Admin uses frontend → calls Fastify API (`/api/*`)
-2. On ticket create → Fastify calls AI service internally → classify + prioritize → writes to `tickets` + `ticket_ai_logs`
-3. Admin opens ticket → Fastify calls AI service → draft response → stores in `ai_draft_responses`
-4. Frontend polls or uses SSE for ticket list updates
+2. On ticket create → Fastify classifies synchronously → enqueues acknowledgement job to Redis (BullMQ) → returns ticket immediately
+3. Backend worker (same process) processes ack job → calls AI `/acknowledge` → inserts admin message (retries with exponential backoff)
+4. Admin opens ticket → Fastify calls AI service → draft response → stores in `ai_draft_responses`
+5. Frontend polls or uses SSE for ticket list updates
 
 **Key rule:** Only the **AI service** holds `GEMINI_API_KEY`. Frontend never talks to AI service directly.
 
@@ -159,13 +162,14 @@ All options below can host this stack. Pick based on how much ops time you want 
 | `backend` | `apps/backend` | Nixpacks or Dockerfile | Yes — API + SSE |
 | `ai-service` | `apps/ai-service` | Dockerfile (Python) | **No** — internal only |
 | `postgres` | Railway plugin | Managed | **No** — private `DATABASE_URL` |
+| `redis` | Railway plugin | Managed | **No** — private `REDIS_URL` for ack queue |
 
 **Resource sizing (stay under $5 credit):**
 
 | Service | vCPU | RAM | Notes |
 |---------|------|-----|-------|
 | frontend | 0.25 | 256 MB | Static build served by `serve` or nginx |
-| backend | 0.25 | 512 MB | Main API + auth |
+| backend | 0.25 | 512 MB | Main API + auth + BullMQ ack worker |
 | ai-service | 0.25 | 512 MB | Spiky during AI calls; can scale to 0 if Railway supports sleep |
 | postgres | shared | 256 MB | Sufficient for 10 authors, 18 books, demo tickets |
 
@@ -187,7 +191,7 @@ All options below can host this stack. Pick based on how much ops time you want 
 
 | Item | Cost |
 |------|------|
-| Model: `gemini-2.0-flash` | $0.10 / 1M input · $0.40 / 1M output (often $0 on free tier) |
+| Model: `gemini-flash-latest` | $0.10 / 1M input · $0.40 / 1M output (often $0 on free tier) |
 | Assignment demo usage (optimized) | **~$0–$0.10** total |
 | Buffer for evaluator testing | Free tier rate limits apply |
 
@@ -271,6 +275,13 @@ CORS_ORIGIN=https://your-frontend.up.railway.app
 AI_SERVICE_URL=http://ai-service.railway.internal:8000
 AI_SERVICE_TIMEOUT_MS=30000
 
+# Redis — acknowledgement job queue (Railway Redis plugin)
+REDIS_URL=redis://default:password@redis.railway.internal:6379
+ACK_QUEUE_NAME=ticket-acknowledgement
+ACK_QUEUE_ATTEMPTS=5
+ACK_QUEUE_BACKOFF_MS=2000
+ACK_QUEUE_CONCURRENCY=2
+
 # Ticket attachments — mount Railway volume at /data/uploads
 UPLOAD_DIR=/data/uploads
 MAX_UPLOAD_BYTES=5242880
@@ -288,7 +299,7 @@ HOST=0.0.0.0
 
 # Google Gemini — ONLY place this key exists (free tier: https://aistudio.google.com/apikey)
 GEMINI_API_KEY=AIza...
-GEMINI_MODEL=gemini-2.0-flash
+GEMINI_MODEL=gemini-flash-latest
 
 # Cost controls
 MAX_DAILY_SPEND_USD=1.00
@@ -311,6 +322,7 @@ VITE_API_URL=https://your-backend.up.railway.app
 
 ```bash
 DATABASE_URL=postgresql://bookleaf:bookleaf@localhost:5432/bookleaf
+REDIS_URL=redis://localhost:6379
 JWT_SECRET=dev-secret-change-in-production
 GEMINI_API_KEY=AIza...
 AI_SERVICE_URL=http://localhost:8000
@@ -337,6 +349,16 @@ VITE_API_URL=http://localhost:4000
 1. In project canvas → **+ New** → **Database** → **PostgreSQL**
 2. Railway auto-creates `DATABASE_URL`
 3. Copy connection string for local reference
+
+### Step 2b — Add Redis
+
+1. In project canvas → **+ New** → **Database** → **Redis**
+2. Railway auto-provisions `REDIS_URL` (and `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` if needed)
+3. Open the **backend** service → **Variables** → **Add Reference Variable** → select the Redis service → choose `REDIS_URL`
+4. Redeploy backend after linking — the acknowledgement worker starts automatically when `REDIS_URL` is set (look for `Acknowledgement worker started` in deploy logs)
+5. Smoke test: create a ticket as author → within ~5–15s, an admin acknowledgement message should appear in the conversation thread
+
+**Cost:** Railway Redis typically adds ~$0–2/month on Hobby within the $5 usage credit for demo traffic.
 
 ### Step 3 — Deploy backend
 
@@ -626,7 +648,6 @@ Before sharing URL with evaluators:
 **Acceptable for assignment demo:**
 
 - Single-region deployment (India/US authors — latency OK for demo)
-- No Redis queue (AI calls synchronous with timeout)
 - Attachment uploads stored at `UPLOAD_DIR` (default `/data/uploads` in Docker/Railway); **attach a persistent volume** in Railway dashboard so files survive redeploys
 - Polling instead of WebSockets
 - Railway sleep if usage exceeds credits (monitor dashboard)
@@ -635,7 +656,7 @@ Before sharing URL with evaluators:
 
 | Area | Next step |
 |------|-----------|
-| AI | Async job queue (BullMQ + Redis); retry with exponential backoff |
+| AI | Move classify to queue too; dead-letter queue for failed ack jobs |
 | Scale | Separate read replica; cache author book list |
 | Security | Refresh tokens, audit logs, WAF |
 | Cost | Prompt caching, embedding-based KB retrieval instead of full injection |
@@ -660,7 +681,7 @@ Before sharing URL with evaluators:
 ## Architecture
 - Monorepo: frontend (React) + backend (Fastify) + ai-service (FastAPI)
 - Database: PostgreSQL (single instance)
-- AI: gemini-2.0-flash via isolated Python service
+- AI: gemini-flash-latest via isolated Python service
 - Deployment: Railway Hobby (~$0/month within usage credits)
 ```
 

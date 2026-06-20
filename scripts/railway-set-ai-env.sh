@@ -21,7 +21,7 @@ if [ -z "${GEMINI_API_KEY:-}" ]; then
   exit 1
 fi
 
-GEMINI_MODEL="${GEMINI_MODEL:-gemini-2.0-flash}"
+GEMINI_MODEL="${GEMINI_MODEL:-gemini-flash-latest}"
 MAX_DAILY_SPEND_USD="${MAX_DAILY_SPEND_USD:-5.00}"
 AI_SPEND_TRACKER_PATH="${AI_SPEND_TRACKER_PATH:-/tmp/ai_daily_spend.json}"
 

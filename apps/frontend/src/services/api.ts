@@ -19,12 +19,16 @@ export async function api<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = getToken();
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(options.headers ?? {}),
+  const headers: Record<string, string> = {
+    ...((options.headers as Record<string, string> | undefined) ?? {}),
   };
+
+  if (options.body != null && options.body !== "") {
+    headers["Content-Type"] ??= "application/json";
+  }
+
   if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });

@@ -351,6 +351,59 @@ paths:
                     type: number
                 required:
                   - message
+  /api/author/tickets/{id}/messages:
+    post:
+      summary: Send author follow-up message
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  minLength: 1
+                  maxLength: 10000
+              required:
+                - content
+      responses:
+        "200":
+          description: Updated ticket
+        "400":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  statusCode:
+                    type: number
+                required:
+                  - message
+        "404":
+          description: Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  statusCode:
+                    type: number
+                required:
+                  - message
   /api/author/tickets/{id}/attachments/{attachmentId}:
     get:
       summary: Download ticket attachment

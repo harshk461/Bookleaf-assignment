@@ -10,6 +10,7 @@ export const API_PATHS = {
     bookSales: (bookId: string) => `/api/author/books/${bookId}/sales`,
     tickets: '/api/author/tickets',
     ticket: (id: string) => `/api/author/tickets/${id}`,
+    ticketMessages: (id: string) => `/api/author/tickets/${id}/messages`,
     ticketStream: '/api/author/tickets/stream',
     ticketStreamDetail: (id: string) => `/api/author/tickets/${id}/stream`,
     ticketAttachment: (ticketId: string, attachmentId: string) =>

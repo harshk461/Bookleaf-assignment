@@ -17,6 +17,7 @@
     "@fastify/jwt": "^9.0.4",
     "@fastify/multipart": "^9.0.3",
     "bcryptjs": "^2.4.3",
+    "bullmq": "^5.79.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.3",
     "fastify": "^5.2.1",

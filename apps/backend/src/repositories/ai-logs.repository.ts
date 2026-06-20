@@ -81,3 +81,15 @@ export async function saveDraft(input: {
     ],
   );
 }
+
+export async function findAcknowledgementLog(ticketId: string) {
+  return getDb().queryOne(
+    `SELECT id FROM ticket_ai_logs
+     WHERE ticket_ref = $1
+       AND task_type = 'draft_response'
+       AND request_payload->>'type' = 'acknowledgement'
+       AND status IN ('success', 'fallback')
+     LIMIT 1`,
+    [ticketId],
+  );
+}

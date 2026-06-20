@@ -15,6 +15,13 @@ export async function fetchTicket(id: string) {
   return api<Ticket>(API_PATHS.author.ticket(id));
 }
 
+export async function sendAuthorMessage(id: string, content: string) {
+  return api<Ticket>(API_PATHS.author.ticketMessages(id), {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  });
+}
+
 export async function createTicket(
   input: CreateTicketInput & { file?: File | null },
 ) {

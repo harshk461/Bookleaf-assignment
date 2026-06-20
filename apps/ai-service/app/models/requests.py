@@ -35,3 +35,22 @@ class DraftResponse(BaseModel):
     estimated_cost_usd: float | None = None
     latency_ms: int | None = None
     model: str | None = None
+
+
+class AcknowledgeRequest(BaseModel):
+    ticket_number: str
+    subject: str
+    description: str
+    category: str | None = None
+    priority: str | None = None
+    book_title: str | None = None
+    author_name: str | None = None
+
+
+class AcknowledgeResponse(BaseModel):
+    content: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    estimated_cost_usd: float | None = None
+    latency_ms: int | None = None
+    model: str | None = None

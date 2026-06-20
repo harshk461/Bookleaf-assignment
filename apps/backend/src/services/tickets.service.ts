@@ -3,7 +3,9 @@ import * as ticketsRepo from '../repositories/tickets.repository.js';
 import * as booksRepo from '../repositories/books.repository.js';
 import * as attachmentsRepo from '../repositories/attachments.repository.js';
 import * as aiLogsRepo from '../repositories/ai-logs.repository.js';
+import * as authorsRepo from '../repositories/authors.repository.js';
 import { classifyAndPrioritize, generateDraft } from './ai-client.service.js';
+import { enqueueAcknowledgement } from '../queues/acknowledgement.queue.js';
 import {
   getMaxUploadBytes,
   saveTicketFile,
@@ -140,6 +142,18 @@ export async function createTicket(input: {
     responsePayload: { category: ai.category, priority: ai.priority },
   });
 
+  const authorUser = await authorsRepo.findUserById(input.userId);
+  await enqueueAcknowledgement({
+    ticketId,
+    ticketNumber: String(ticket.ticket_number ?? ticketNumber),
+    subject: input.subject,
+    description: input.description,
+    category: ai.category,
+    priority: ai.priority,
+    bookTitle,
+    authorName: authorUser?.name ? String(authorUser.name) : null,
+  });
+
   return getAuthorTicket(input.authorRef, ticketId);
 }
 
@@ -266,6 +280,32 @@ export async function addAdminResponse(ticketId: string, adminId: string, conten
     content,
   });
   return getAdminTicket(ticketId);
+}
+
+export async function addAuthorMessage(
+  authorRef: string,
+  userId: string,
+  ticketId: string,
+  content: string,
+) {
+  const ticket = await ticketsRepo.getTicketForAuthor(authorRef, ticketId);
+  if (!ticket) throw new NotFoundError('Ticket not found');
+  if (ticket.status === 'closed') {
+    throw new AppError(400, 'Cannot send messages on a closed ticket');
+  }
+
+  await messagesRepo.insertMessage({
+    ticketRef: ticketId,
+    senderType: 'author',
+    senderRef: userId,
+    content,
+  });
+
+  if (ticket.status === 'resolved') {
+    await ticketsRepo.patchTicket(ticketId, { status: 'open' });
+  }
+
+  return getAuthorTicket(authorRef, ticketId);
 }
 
 export async function getAttachmentForAuthor(

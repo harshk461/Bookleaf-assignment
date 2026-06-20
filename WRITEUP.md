@@ -25,7 +25,7 @@
 
 > **Provider choice:** Assignment allows OpenAI, Anthropic, or any LLM. This build uses **Google Gemini** because OpenAI billing credits could not be added during development. Gemini’s free tier is sufficient for classify/draft demos; swapping providers would only require changes in `apps/ai-service`.
 
-- **gemini-2.0-flash:** low-cost model with JSON output mode; ~$0.0001/classify, ~$0.0004/draft at list pricing (often $0 on free tier)
+- **gemini-flash-latest:** low-cost model with JSON output mode; ~$0.0001/classify, ~$0.0004/draft at list pricing (often $0 on free tier)
 - **Combined classify+prioritize:** one call returns both fields; trade-off is slightly less granular prompts
 - **KB sections:** injected by ticket category, not full knowledge base paste
 - **Cost cap:** in-memory daily tracker in AI service; production would persist to Redis/DB

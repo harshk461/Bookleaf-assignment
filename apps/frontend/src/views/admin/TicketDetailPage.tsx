@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AiDraftEditor } from "@/components/admin/AiDraftEditor";
@@ -17,6 +17,7 @@ import { ErrorAlert } from "@/components/common/ErrorAlert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { useTicketDetailPolling } from "@/hooks/useTicketDetailPolling";
 import * as ticketsService from "@/services/tickets.service";
 import type { Ticket } from "@bookleaf/shared";
 
@@ -59,24 +60,21 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
     void loadNotes();
   }, [ticketId]);
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const t = await ticketsService.fetchAdminTicket(ticketId);
-        setTicket((prev) =>
-          prev
-            ? {
-                ...t,
-                aiDraft: prev.aiDraft,
-              }
-            : t,
-        );
-      } catch {
-        /* ignore poll errors */
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [ticketId]);
+  const onPollUpdate = useCallback(
+    (updated: Ticket & { aiDraft?: string | null }) => {
+      setTicket((prev) =>
+        prev
+          ? {
+              ...updated,
+              aiDraft: prev.aiDraft,
+            }
+          : updated,
+      );
+    },
+    [],
+  );
+
+  useTicketDetailPolling({ ticketId, role: "admin", onUpdate: onPollUpdate });
 
   async function handleStatusChange(status: string) {
     try {
@@ -152,13 +150,11 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
               <CardTitle className="text-base">Conversation</CardTitle>
             </CardHeader>
             <CardContent>
-              {!ticket.messages?.length && ticket.description && (
-                <div className="mb-4 rounded-lg bg-muted p-3 text-sm">
-                  <div className="mb-1 text-xs font-medium text-muted-foreground">Original request</div>
-                  <p className="whitespace-pre-wrap">{ticket.description}</p>
-                </div>
-              )}
-              <TicketThread messages={ticket.messages ?? []} />
+              <TicketThread
+                messages={ticket.messages ?? []}
+                viewer="admin"
+                authorLabel={ticket.authorName ?? "Author"}
+              />
               {ticket.attachments && ticket.attachments.length > 0 && (
                 <div className="mt-4">
                   <TicketAttachments
@@ -194,6 +190,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
               try {
                 const updated = await ticketsService.sendAdminResponse(ticketId, draft);
                 setTicket((prev) => ({ ...updated, aiDraft: prev?.aiDraft }));
+                setDraft("");
                 toast.success("Response sent to author");
               } catch (err) {
                 toast.error(err instanceof Error ? err.message : "Failed to send response");

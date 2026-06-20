@@ -27,8 +27,8 @@ packages/shared → Shared TypeScript types & API paths
 cp .env.example .env
 # Edit .env — set GEMINI_API_KEY (see AI Strategy below)
 
-# Start Postgres (Docker)
-docker compose up postgres -d
+# Start Postgres + Redis (Docker)
+docker compose up postgres redis -d
 
 # Install & seed
 bash scripts/setup.sh
@@ -96,6 +96,7 @@ Base URL: `http://localhost:4000`
 | GET/POST | `/api/author/tickets` | Author |
 | GET | `/api/author/tickets/stream` | Author (SSE) |
 | GET | `/api/author/tickets/:id/stream` | Author (SSE) |
+| POST | `/api/author/tickets/:id/messages` | Author (follow-up reply) |
 | GET | `/api/author/tickets/:id/attachments/:attachmentId` | Author |
 | GET | `/api/admin/tickets` | Admin (query: `status`, `category`, `priority`, `from`, `to`) |
 | GET | `/api/admin/tickets/stream` | Admin (SSE, same filters) |
@@ -117,14 +118,15 @@ Full spec: [docs/api/openapi.yaml](./docs/api/openapi.yaml)
 
 ## AI Strategy
 
-> **Why Gemini, not OpenAI?** The assignment allows any LLM API. This implementation uses **Google Gemini** (`gemini-2.0-flash`) because OpenAI billing could not be enabled for this project. Gemini offers a free API tier suitable for demo/development. Architecture is unchanged: only `apps/ai-service` holds the API key.
+> **Why Gemini, not OpenAI?** The assignment allows any LLM API. This implementation uses **Google Gemini** (`gemini-flash-latest`) because OpenAI billing could not be enabled for this project. Gemini offers a free API tier suitable for demo/development. Architecture is unchanged: only `apps/ai-service` holds the API key.
 
 - `GEMINI_API_KEY` lives **only** in `apps/ai-service` (never exposed to frontend)
-- Backend proxies classify/draft to the internal AI service
-- **Model:** `gemini-2.0-flash` — cost-effective, supports JSON output for classification, sufficient for support drafting
+- Backend proxies classify/draft/acknowledge to the internal AI service
+- **Model:** `gemini-flash-latest` — cost-effective, supports JSON output for classification, sufficient for support drafting
 - **Combined classify + prioritize** in one LLM call (halves API cost vs separate calls)
+- **Auto-acknowledgement:** on ticket create, an ack job is enqueued (BullMQ + Redis) and processed asynchronously with retries; author sees the admin-thread message via polling
 - **KB injection:** category-specific snippets only (not full 8-page paste)
-- **Token caps:** description truncated to 2,000 chars; classify 256 / draft 512 max tokens
+- **Token caps:** description truncated to 2,000 chars; classify 256 / draft 512 / acknowledge 192 max tokens
 - **Draft on demand:** cached in `ai_draft_responses`; Gemini called only when admin clicks Generate
 - **Audit:** every AI call logged to `ticket_ai_logs` with tokens, latency, cost estimate
 - **Daily spend cap:** `MAX_DAILY_SPEND_USD` in AI service; draft returns HTTP 503 when exceeded; classify falls back gracefully
