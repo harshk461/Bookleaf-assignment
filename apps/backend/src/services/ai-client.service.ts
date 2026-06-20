@@ -4,12 +4,43 @@ import { AppError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import type { TicketCategory, TicketPriority } from '@bookleaf/shared';
 
+let loggedAiUrlNormalization = false;
+
 function normalizeAiServiceUrl(): string {
-  let url = loadEnv().AI_SERVICE_URL.trim().replace(/\/+$/, '');
+  const env = loadEnv();
+  let url = env.AI_SERVICE_URL.trim().replace(/\/+$/, '');
+
+  if (url.includes('${{')) {
+    logger.warn(
+      { aiServiceUrl: url },
+      'AI_SERVICE_URL contains an unresolved Railway template — redeploy after setting the variable reference',
+    );
+  }
+
   // Railway private networking is HTTP-only; https causes redirects that can turn POST into GET.
   if (url.includes('.railway.internal') && url.startsWith('https://')) {
     url = `http://${url.slice('https://'.length)}`;
   }
+
+  // Append port when missing (common Railway misconfig: domain only, no :8000).
+  try {
+    const parsed = new URL(url);
+    if (!parsed.port) {
+      const port = env.AI_SERVICE_PORT;
+      parsed.port = String(port);
+      url = parsed.toString().replace(/\/$/, '');
+      if (!loggedAiUrlNormalization) {
+        logger.info(
+          { aiServiceUrl: url, aiServicePort: port },
+          'AI_SERVICE_URL had no port — appended from AI_SERVICE_PORT',
+        );
+        loggedAiUrlNormalization = true;
+      }
+    }
+  } catch {
+    logger.warn({ aiServiceUrl: url }, 'AI_SERVICE_URL is not a valid URL');
+  }
+
   return url;
 }
 
