@@ -10,5 +10,5 @@ export interface AcknowledgementJobPayload {
 }
 
 export function acknowledgementJobId(ticketId: string): string {
-  return `ticket-ack:${ticketId}`;
+  return `ticket-ack-${ticketId}`;
 }
