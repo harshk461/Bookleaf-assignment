@@ -157,6 +157,16 @@ DATABASE_URL="postgresql://..." bash scripts/deploy-seed-remote.sh
 
 Railway **does not** auto-sync env vars from GitHub. You must add them per service in the dashboard or CLI.
 
+**backend** (must reach ai-service over private network):
+
+```env
+AI_SERVICE_URL=http://${{ai-service.RAILWAY_PRIVATE_DOMAIN}}:${{ai-service.PORT}}
+```
+
+`ai-service` must have `PORT=8000` set (see `deploy/railway.ai-service.env`). Use `http://` only — never `https://` for `.railway.internal` URLs.
+
+After redeploying **ai-service**, open its logs and confirm `GET /health` returns 200. Then check **backend** logs for `AI service reachable`. If you see `ECONNREFUSED`, the private URL or `PORT` is wrong.
+
 **ai-service** (required for AI classify/draft):
 
 1. Open Railway → your project → **ai-service** → **Variables**

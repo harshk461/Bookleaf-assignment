@@ -271,8 +271,8 @@ JWT_EXPIRES_IN=7d
 # CORS — frontend public URL
 CORS_ORIGIN=https://your-frontend.up.railway.app
 
-# AI service — internal Railway URL (private networking)
-AI_SERVICE_URL=http://ai-service.railway.internal:8000
+# AI service — internal Railway URL (private networking; http only, not https)
+AI_SERVICE_URL=http://${{ai-service.RAILWAY_PRIVATE_DOMAIN}}:${{ai-service.PORT}}
 AI_SERVICE_TIMEOUT_MS=30000
 
 # Redis — acknowledgement job queue (Railway Redis plugin)
