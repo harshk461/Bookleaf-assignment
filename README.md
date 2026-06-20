@@ -157,15 +157,28 @@ DATABASE_URL="postgresql://..." bash scripts/deploy-seed-remote.sh
 
 Railway **does not** auto-sync env vars from GitHub. You must add them per service in the dashboard or CLI.
 
-**backend** (must reach ai-service over private network):
+**backend** (must reach ai-service):
 
 ```env
-AI_SERVICE_URL=http://${{ai-service.RAILWAY_PRIVATE_DOMAIN}}:${{ai-service.PORT}}
+# Service name must match Railway exactly — if yours is "AI", use ${{AI...}} not ${{ai-service...}}
+AI_SERVICE_URL=http://${{AI.RAILWAY_PRIVATE_DOMAIN}}:${{AI.PORT}}
+AI_SERVICE_PORT=8000
 ```
 
-`ai-service` must have `PORT=8000` set (see `deploy/railway.ai-service.env`). Use `http://` only — never `https://` for `.railway.internal` URLs.
+Use `http://` only for `.railway.internal` URLs (never `https://`).
 
-After redeploying **ai-service**, open its logs and confirm `GET /health` returns 200. Then check **backend** logs for `AI service reachable`. If you see `ECONNREFUSED`, the private URL or `PORT` is wrong.
+**If private networking fails** (`ECONNREFUSED` in backend logs):
+
+1. In Railway → **ai-service** → **Settings** → **Networking** → **Generate Domain**
+2. On **backend**, add:
+   ```env
+   AI_SERVICE_PUBLIC_URL=https://${{AI.RAILWAY_PUBLIC_DOMAIN}}
+   ```
+3. Redeploy backend — it will try private URL first, then fall back to public.
+
+Debug: `curl https://<your-backend-domain>/health/ai` should show `"reachable": true`.
+
+After redeploying **ai-service**, confirm `GET /health` returns 200 in ai-service logs. Backend logs should show `AI service reachable`.
 
 **ai-service** (required for AI classify/draft):
 

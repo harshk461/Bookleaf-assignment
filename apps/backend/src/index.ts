@@ -3,26 +3,25 @@ import Fastify from 'fastify';
 import { buildApp } from './app.js';
 import { closeDb } from './db/index.js';
 import { closeAckWorker, startAckWorker } from './queues/acknowledgement.queue.js';
-import { getAiServiceBaseUrl } from './services/ai-client.service.js';
+import { getAiServiceBaseUrl, probeAiServiceHealth } from './services/ai-client.service.js';
 import { logger } from './utils/logger.js';
 
 async function checkAiServiceReachable(): Promise<void> {
-  const aiServiceUrl = getAiServiceBaseUrl();
-  try {
-    const res = await fetch(`${aiServiceUrl}/health`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (res.ok) {
-      logger.info({ aiServiceUrl }, 'AI service reachable');
-    } else {
-      logger.warn({ aiServiceUrl, status: res.status }, 'AI service health check returned non-OK status');
-    }
-  } catch (err) {
-    logger.warn(
-      { err, aiServiceUrl },
-      'AI service unreachable — classify/draft/acknowledge will use fallbacks until fixed',
+  const result = await probeAiServiceHealth();
+  if (result.ok) {
+    logger.info(
+      { aiServiceUrl: result.url, geminiConfigured: result.geminiConfigured },
+      'AI service reachable',
     );
+    return;
   }
+  logger.warn(
+    {
+      aiServiceUrl: getAiServiceBaseUrl(),
+      triedUrls: result.triedUrls,
+    },
+    'AI service unreachable — set AI_SERVICE_PUBLIC_URL on backend or fix private networking',
+  );
 }
 
 async function main() {

@@ -1,8 +1,12 @@
 import { loadEnv } from '../config/env.js';
+import dns from 'node:dns';
 import { DEFAULT_TICKET_CATEGORY, DEFAULT_TICKET_PRIORITY } from '../config/constants.js';
 import { AppError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import type { TicketCategory, TicketPriority } from '@bookleaf/shared';
+
+// Prefer IPv4 when .railway.internal resolves to both A and AAAA records.
+dns.setDefaultResultOrder('ipv4first');
 
 let loggedAiUrlNormalization = false;
 
@@ -52,38 +56,94 @@ export function getAiServiceBaseUrl(): string {
   return aiServiceUrl();
 }
 
-const AI_FETCH_TIMEOUT_MS = 30_000;
-
-function aiEndpoint(path: string): string {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${aiServiceUrl()}${normalizedPath}`;
+function getAiServiceCandidateUrls(): string[] {
+  const env = loadEnv();
+  const primary = aiServiceUrl();
+  const publicUrl = env.AI_SERVICE_PUBLIC_URL?.trim().replace(/\/+$/, '');
+  if (publicUrl && publicUrl !== primary) {
+    return [primary, publicUrl];
+  }
+  return [primary];
 }
 
+export async function probeAiServiceHealth(): Promise<{
+  ok: boolean;
+  url: string | null;
+  geminiConfigured?: boolean;
+  triedUrls: string[];
+}> {
+  const triedUrls = getAiServiceCandidateUrls();
+  for (const base of triedUrls) {
+    try {
+      const res = await fetch(`${base}/health`, {
+        signal: AbortSignal.timeout(5000),
+        redirect: 'manual',
+      });
+      if (res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { geminiConfigured?: boolean };
+        if (base !== triedUrls[0]) {
+          logger.warn(
+            { privateUrl: triedUrls[0], publicUrl: base },
+            'AI service reachable only via AI_SERVICE_PUBLIC_URL — fix private networking or keep public fallback',
+          );
+        }
+        return { ok: true, url: base, geminiConfigured: body.geminiConfigured, triedUrls };
+      }
+      logger.warn({ url: base, status: res.status }, 'AI service health check returned non-OK status');
+    } catch (err) {
+      logger.warn({ err, url: base }, 'AI service candidate unreachable');
+    }
+  }
+  return { ok: false, url: triedUrls[0] ?? null, triedUrls };
+}
+
+const AI_FETCH_TIMEOUT_MS = 30_000;
+
 async function aiPost(path: string, body: Record<string, unknown>): Promise<Response> {
-  const url = aiEndpoint(path);
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(body),
-    redirect: 'manual',
-    signal: AbortSignal.timeout(AI_FETCH_TIMEOUT_MS),
-  });
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const candidates = getAiServiceCandidateUrls();
+  let lastError: unknown;
 
-  if (res.status >= 300 && res.status < 400) {
-    const location = res.headers.get('location') ?? 'unknown';
-    throw new Error(
-      `AI service redirected POST ${url} → ${location} (${res.status}); check AI_SERVICE_URL uses http:// with no trailing slash`,
-    );
+  for (let i = 0; i < candidates.length; i += 1) {
+    const base = candidates[i];
+    const url = `${base}${normalizedPath}`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify(body),
+        redirect: 'manual',
+        signal: AbortSignal.timeout(AI_FETCH_TIMEOUT_MS),
+      });
+
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get('location') ?? 'unknown';
+        throw new Error(
+          `AI service redirected POST ${url} → ${location} (${res.status}); use http:// for private URLs`,
+        );
+      }
+
+      if (res.status === 405) {
+        logger.warn({ url, method: 'POST', path }, 'AI service returned 405 Method Not Allowed');
+      }
+
+      if (i > 0 && res.ok) {
+        logger.info({ url: base }, 'AI request succeeded via AI_SERVICE_PUBLIC_URL fallback');
+      }
+
+      return res;
+    } catch (err) {
+      lastError = err;
+      if (i < candidates.length - 1) {
+        logger.warn({ err, url: base, path }, 'AI private URL failed — trying public fallback');
+      }
+    }
   }
 
-  if (res.status === 405) {
-    logger.warn({ url, method: 'POST', path }, 'AI service returned 405 Method Not Allowed');
-  }
-
-  return res;
+  throw lastError ?? new Error('AI service unreachable');
 }
 
 export interface AiUsageMeta {

@@ -9,6 +9,8 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('7d'),
   AI_SERVICE_URL: z.string().min(1).default('http://localhost:8000'),
   AI_SERVICE_PORT: z.coerce.number().int().positive().default(8000),
+  /** Optional public Railway URL when private .railway.internal networking fails */
+  AI_SERVICE_PUBLIC_URL: z.string().optional(),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   REDIS_URL: z.string().optional(),
   ACK_QUEUE_NAME: z.string().default('ticket-acknowledgement'),
