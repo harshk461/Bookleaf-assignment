@@ -151,6 +151,24 @@ DATABASE_URL="postgresql://..." bash scripts/deploy-seed-remote.sh
 
 **Important for this monorepo:** backend and frontend Dockerfiles need the **repo root** as the Railway service root directory (not `apps/backend`). Set `RAILWAY_DOCKERFILE_PATH=apps/backend/Dockerfile` if not using the per-app `railway.toml`.
 
+### Railway variables (Gemini not showing?)
+
+Railway **does not** auto-sync env vars from GitHub. You must add them per service in the dashboard or CLI.
+
+**ai-service** (required for AI classify/draft):
+
+1. Open Railway → your project → **ai-service** → **Variables**
+2. Click **RAW Editor** and paste the contents of [`deploy/railway.ai-service.env`](./deploy/railway.ai-service.env)
+3. Replace `GEMINI_API_KEY=AIza-your-key-here` with your real key from [Google AI Studio](https://aistudio.google.com/apikey)
+4. **Delete** any legacy `OPENAI_API_KEY` / `OPENAI_MODEL` variables on this service
+5. Click **Deploy** to apply staged variable changes
+
+Or from your terminal (after `npx @railway/cli login` and linking the project):
+
+```bash
+GEMINI_API_KEY=AIza...your-key... bash scripts/railway-set-ai-env.sh
+```
+
 **Live demo URLs** — add after deploy:
 
 | | URL |
