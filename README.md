@@ -7,7 +7,7 @@ Monorepo for the BookLeaf Author Support & Communication Portal assignment.
 ```
 apps/frontend  →  Next.js 15 (Author + Admin portals)
 apps/backend   →  Fastify REST API + SSE
-apps/ai-service → FastAPI + OpenAI (internal only)
+apps/ai-service → FastAPI + Google Gemini (internal only)
 db/            → PostgreSQL migrations + seed
 packages/shared → Shared TypeScript types & API paths
 ```
@@ -25,7 +25,7 @@ packages/shared → Shared TypeScript types & API paths
 
 ```bash
 cp .env.example .env
-# Edit .env — set OPENAI_API_KEY in ai-service usage only
+# Edit .env — set GEMINI_API_KEY (see AI Strategy below)
 
 # Start Postgres (Docker)
 docker compose up postgres -d
@@ -113,16 +113,19 @@ Full spec: [docs/api/openapi.yaml](./docs/api/openapi.yaml)
 - **Uploads:** Local/Docker volume storage (`UPLOAD_DIR`), not S3
 - **AI budget:** Daily spend cap tracked in AI service (file-backed); draft returns HTTP 503 when exceeded; classify falls back gracefully
 - **Logout:** Stateless JWT — no server-side token invalidation
+- **LLM provider:** Uses **Google Gemini** instead of OpenAI (assignment suggested OpenAI; switched because billing credits could not be added to OpenAI during development — Gemini free tier via [Google AI Studio](https://aistudio.google.com/apikey))
 
 ## AI Strategy
 
-- `OPENAI_API_KEY` lives **only** in `apps/ai-service` (never exposed to frontend)
+> **Why Gemini, not OpenAI?** The assignment allows any LLM API. This implementation uses **Google Gemini** (`gemini-2.0-flash`) because OpenAI billing could not be enabled for this project. Gemini offers a free API tier suitable for demo/development. Architecture is unchanged: only `apps/ai-service` holds the API key.
+
+- `GEMINI_API_KEY` lives **only** in `apps/ai-service` (never exposed to frontend)
 - Backend proxies classify/draft to the internal AI service
-- **Model:** `gpt-4o-mini` — cost-effective, supports JSON mode for classification, sufficient for support drafting
+- **Model:** `gemini-2.0-flash` — cost-effective, supports JSON output for classification, sufficient for support drafting
 - **Combined classify + prioritize** in one LLM call (halves API cost vs separate calls)
 - **KB injection:** category-specific snippets only (not full 8-page paste)
 - **Token caps:** description truncated to 2,000 chars; classify 256 / draft 512 max tokens
-- **Draft on demand:** cached in `ai_draft_responses`; OpenAI called only when admin clicks Generate
+- **Draft on demand:** cached in `ai_draft_responses`; Gemini called only when admin clicks Generate
 - **Audit:** every AI call logged to `ticket_ai_logs` with tokens, latency, cost estimate
 - **Daily spend cap:** `MAX_DAILY_SPEND_USD` in AI service; draft returns HTTP 503 when exceeded; classify falls back gracefully
 - **Fallbacks:** `general_inquiry` / `medium` for classification; generic draft text for manual edit

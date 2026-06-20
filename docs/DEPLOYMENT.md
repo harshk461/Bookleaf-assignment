@@ -3,7 +3,8 @@
 > **Project:** Author Support & Communication Portal  
 > **Related docs:** [ASSIGNMENT_FINDINGS.md](./ASSIGNMENT_FINDINGS.md) · [DB_DESIGN.md](./DB_DESIGN.md)  
 > **Stack:** Monorepo — React frontend · Fastify API · FastAPI AI service · PostgreSQL  
-> **Budget constraint:** ~$5 total for OpenAI API; infrastructure should cost $0–$5/month
+> **Budget constraint:** ~$0 for LLM (Google Gemini free tier); infrastructure should cost $0–$5/month  
+> **LLM note:** Assignment suggests OpenAI; this deployment uses **Google Gemini** because OpenAI billing could not be enabled. Get a free key at [Google AI Studio](https://aistudio.google.com/apikey).
 
 ---
 
@@ -15,7 +16,7 @@
 4. [Platform Comparison](#4-platform-comparison)
 5. [Recommended Setup](#5-recommended-setup)
 6. [Cost Budget](#6-cost-budget)
-7. [OpenAI Budget Strategy ($5)](#7-openai-budget-strategy-5)
+7. [Gemini / LLM Budget Strategy](#7-gemini--llm-budget-strategy)
 8. [Environment Variables](#8-environment-variables)
 9. [Railway Deployment Guide](#9-railway-deployment-guide)
 10. [Alternative: Split Hosting (Zero Infra Cost)](#10-alternative-split-hosting-zero-infra-cost)
@@ -32,17 +33,17 @@
 
 ## 1. Executive Summary
 
-**Goal:** Deploy a working live demo for evaluators with three app services and one shared PostgreSQL database, while keeping infrastructure spend near zero and reserving your only paid budget (~$5) for OpenAI.
+**Goal:** Deploy a working live demo for evaluators with three app services and one shared PostgreSQL database, while keeping infrastructure spend near zero. LLM calls use **Google Gemini** (free tier) instead of OpenAI.
 
 **Recommended approach:**
 
 | Layer | Choice | Why |
 |-------|--------|-----|
 | **Hosting** | Railway (Hobby plan) | One monorepo, multiple services, managed Postgres, private networking — simplest ops for a 5-day assignment |
-| **AI model** | `gpt-4o-mini` | Assignment-suggested, cheapest capable OpenAI model |
+| **AI model** | `gemini-2.0-flash` | Free-tier Gemini API; JSON output for classification; sufficient for support drafting |
 | **Real-time** | SSE or 5s polling | Avoids WebSocket infra complexity on free tiers |
 
-**Net infra cost (typical):** $0–$5/month if you stay within Railway Hobby's included $5 usage credit. Your $5 OpenAI credit is separate and should last the full demo period if you optimize prompts.
+**Net infra cost (typical):** $0–$5/month if you stay within Railway Hobby's included $5 usage credit. Gemini free tier covers demo traffic; `MAX_DAILY_SPEND_USD` guards against runaway usage.
 
 ---
 
@@ -69,8 +70,8 @@
           │                                                          │
           │                                                          ▼
           │                                               ┌─────────────────┐
-          └───────────────────────────────────────────────│   OpenAI API    │
-                                                          │  gpt-4o-mini    │
+          └───────────────────────────────────────────────│  Google Gemini  │
+                                                          │ gemini-2.0-flash│
                                                           │  (env key only) │
                                                           └─────────────────┘
 ```
@@ -82,7 +83,7 @@
 3. Admin opens ticket → Fastify calls AI service → draft response → stores in `ai_draft_responses`
 4. Frontend polls or uses SSE for ticket list updates
 
-**Key rule:** Only the **AI service** holds `OPENAI_API_KEY`. Frontend never talks to AI service directly.
+**Key rule:** Only the **AI service** holds `GEMINI_API_KEY`. Frontend never talks to AI service directly.
 
 ---
 
@@ -182,29 +183,31 @@ All options below can host this stack. Pick based on how much ops time you want 
 | Domain (optional) | $0 | Use Railway subdomain |
 | **Infra total** | **$0–$5** | |
 
-### OpenAI API (your $5 budget)
+### Google Gemini API (free tier)
 
 | Item | Cost |
 |------|------|
-| Model: `gpt-4o-mini` | $0.15 / 1M input · $0.60 / 1M output |
-| Assignment demo usage (optimized) | **~$0.50–$2.00** total |
-| Buffer for evaluator testing | Remaining ~$3–4.50 |
+| Model: `gemini-2.0-flash` | $0.10 / 1M input · $0.40 / 1M output (often $0 on free tier) |
+| Assignment demo usage (optimized) | **~$0–$0.10** total |
+| Buffer for evaluator testing | Free tier rate limits apply |
 
-See [Section 7](#7-openai-budget-strategy-5) for token math.
+See [Section 7](#7-gemini--llm-budget-strategy) for token math.
 
 ---
 
-## 7. OpenAI Budget Strategy ($5)
+## 7. Gemini / LLM Budget Strategy
+
+> **Honest note:** The assignment mentions OpenAI. This project uses **Google Gemini** because OpenAI billing could not be enabled. Gemini’s free tier covers demo usage; `MAX_DAILY_SPEND_USD` still guards runaway spend.
 
 Evaluators care about **cost awareness** (25% of AI score). Document these choices in README.
 
 ### Estimated token usage per AI call
 
-| Task | When | Input tokens | Output tokens | Est. cost |
-|------|------|--------------|---------------|-----------|
-| Classify + prioritize | Ticket created | ~800 (subject + description + small system prompt) | ~50 (JSON) | ~$0.00015 |
-| Draft response | Admin opens ticket | ~2,500 (KB chunk + ticket + author/book context) | ~400 (draft text) | ~$0.0006 |
-| Regenerate draft | Admin clicks regenerate | ~2,500 | ~400 | ~$0.0006 |
+| Task | When | Input tokens | Output tokens | Est. cost (Gemini list price) |
+|------|------|--------------|---------------|-------------------------------|
+| Classify + prioritize | Ticket created | ~800 | ~50 (JSON) | ~$0.0001 |
+| Draft response | Admin opens ticket | ~2,500 | ~400 | ~$0.0004 |
+| Regenerate draft | Admin clicks regenerate | ~2,500 | ~400 | ~$0.0004 |
 
 ### Demo session estimate
 
@@ -232,7 +235,7 @@ Evaluators care about **cost awareness** (25% of AI score). Document these choic
 
 ### Graceful degradation (required by assignment)
 
-When OpenAI is down, rate-limited, or budget exceeded:
+When Gemini is down, rate-limited, or budget exceeded:
 
 | Feature | Fallback |
 |---------|----------|
@@ -283,9 +286,9 @@ LOG_LEVEL=info
 PORT=8000
 HOST=0.0.0.0
 
-# OpenAI — ONLY place this key exists
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
+# Google Gemini — ONLY place this key exists (free tier: https://aistudio.google.com/apikey)
+GEMINI_API_KEY=AIza...
+GEMINI_MODEL=gemini-2.0-flash
 
 # Cost controls
 MAX_DAILY_SPEND_USD=1.00
@@ -309,7 +312,7 @@ VITE_API_URL=https://your-backend.up.railway.app
 ```bash
 DATABASE_URL=postgresql://bookleaf:bookleaf@localhost:5432/bookleaf
 JWT_SECRET=dev-secret-change-in-production
-OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=AIza...
 AI_SERVICE_URL=http://localhost:8000
 VITE_API_URL=http://localhost:4000
 ```
@@ -322,7 +325,7 @@ VITE_API_URL=http://localhost:4000
 
 - GitHub/GitLab private repo with monorepo pushed
 - Railway account (use $5 trial credit first)
-- OpenAI API key with $5 prepaid credit / usage limit set in OpenAI dashboard
+- Gemini API key (free) from [Google AI Studio](https://aistudio.google.com/apikey)
 
 ### Step 1 — Create project
 
@@ -347,7 +350,7 @@ VITE_API_URL=http://localhost:4000
 ### Step 4 — Deploy AI service
 
 1. **+ New** → same repo → root `apps/ai-service`
-2. Variables → `OPENAI_API_KEY`, `OPENAI_MODEL`, `AI_SERVICE_API_KEY`
+2. Variables → `GEMINI_API_KEY`, `GEMINI_MODEL`, `AI_SERVICE_API_KEY`
 3. **Do not generate a public domain** — use private networking only
 4. Copy internal hostname: `ai-service.railway.internal`
 
@@ -519,7 +522,7 @@ Point all API calls to `VITE_API_URL` — never embed OpenAI key.
 
 | Rule | Implementation |
 |------|----------------|
-| OpenAI key server-side only | Key in `ai-service` env only |
+| Gemini key server-side only | Key in `ai-service` env only |
 | AI service not public | Railway private networking; or API key + firewall |
 | JWT on all `/api/*` except `/api/auth/login` | Fastify `onRequest` hook |
 | RBAC | `author` vs `admin` middleware per DB_DESIGN.md |
@@ -533,7 +536,7 @@ Point all API calls to `VITE_API_URL` — never embed OpenAI key.
 Backend ──X-API-Key──► AI Service
 Frontend ──JWT────────► Backend
 Frontend ──✗──────────► AI Service (blocked)
-Frontend ──✗──────────► OpenAI (blocked)
+Frontend ──✗──────────► Gemini (blocked)
 ```
 
 ---
@@ -568,9 +571,7 @@ Configure Railway health check path on each service:
 - Log AI calls with token counts to `ticket_ai_logs` table
 - `console.error` on AI failures with ticket ID
 
-**OpenAI usage dashboard:**
-
-- Set hard limit to $5 in [OpenAI usage settings](https://platform.openai.com/settings/organization/limits)
+**Gemini usage:** Monitor at [Google AI Studio](https://aistudio.google.com/); set `MAX_DAILY_SPEND_USD` in AI service env.
 - Check usage daily during demo week
 
 ---
@@ -615,7 +616,7 @@ Before sharing URL with evaluators:
 - [ ] AI failure path tested (invalid key / budget cap → ticket still created)
 - [ ] In-production books (BK013, BK015) display correctly
 - [ ] README has: local setup, architecture, AI strategy, test credentials
-- [ ] OpenAI usage < $2 spent; $5 limit set in dashboard
+- [ ] Gemini key set; AI classify + draft working with fallbacks
 - [ ] Private repo + evaluator added as collaborator
 
 ---
@@ -659,7 +660,7 @@ Before sharing URL with evaluators:
 ## Architecture
 - Monorepo: frontend (React) + backend (Fastify) + ai-service (FastAPI)
 - Database: PostgreSQL (single instance)
-- AI: gpt-4o-mini via isolated Python service
+- AI: gemini-2.0-flash via isolated Python service
 - Deployment: Railway Hobby (~$0/month within usage credits)
 ```
 

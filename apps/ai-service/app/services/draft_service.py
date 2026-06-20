@@ -3,7 +3,7 @@ from app.models.requests import DraftRequest, DraftResponse
 from app.prompts.draft_prompt import DRAFT_PROMPT
 from app.prompts.kb_sections import royalty, isbn, printing, distribution, production, company
 from app.prompts.system_base import SYSTEM_BASE
-from app.services.openai_client import chat_text
+from app.services.gemini_client import chat_text
 from app.utils.fallback import fallback_draft
 from app.utils.token_budget import truncate_description
 

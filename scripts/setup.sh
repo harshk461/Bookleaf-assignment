@@ -5,7 +5,7 @@ cd "$ROOT"
 
 if [ ! -f .env ]; then
   cp .env.example .env
-  echo "Created .env from .env.example — update OPENAI_API_KEY before using AI features."
+  echo "Created .env from .env.example — set GEMINI_API_KEY before using AI features."
 fi
 
 npm install

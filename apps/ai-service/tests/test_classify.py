@@ -47,7 +47,7 @@ def test_classify_fallback_without_api_key(client, monkeypatch):
     from app.config import settings
     from app.services import cost_tracker
 
-    monkeypatch.setattr(settings.settings, "openai_api_key", "")
+    monkeypatch.setattr(settings.settings, "gemini_api_key", "")
     monkeypatch.setattr(settings.settings, "max_daily_spend_usd", 100.0)
     cost_tracker.reset_daily_spend()
 

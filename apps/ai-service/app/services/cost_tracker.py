@@ -2,10 +2,11 @@ _daily_spend_usd = 0.0
 _current_date: str | None = None
 _tracker_path: str | None = None
 
-# USD per 1M tokens (approximate OpenAI pricing)
+# USD per 1M tokens (approximate Google Gemini pricing)
 MODEL_PRICING = {
-    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-    "gpt-4o": {"input": 2.50, "output": 10.00},
+    "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
+    "gemini-1.5-flash": {"input": 0.075, "output": 0.30},
+    "gemini-1.5-pro": {"input": 1.25, "output": 5.00},
 }
 
 
@@ -61,7 +62,7 @@ def _persist() -> None:
 
 
 def estimate_cost(input_tokens: int, output_tokens: int, model: str) -> float:
-    pricing = MODEL_PRICING.get(model, MODEL_PRICING["gpt-4o-mini"])
+    pricing = MODEL_PRICING.get(model, MODEL_PRICING["gemini-2.0-flash"])
     return (input_tokens * pricing["input"] + output_tokens * pricing["output"]) / 1_000_000
 
 
