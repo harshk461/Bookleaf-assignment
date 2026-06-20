@@ -10,42 +10,78 @@ dns.setDefaultResultOrder('ipv4first');
 
 let loggedAiUrlNormalization = false;
 
-function normalizeAiServiceUrl(): string {
+function isPrivateAiHost(hostname: string): boolean {
+  return (
+    hostname.endsWith('.railway.internal') ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1'
+  );
+}
+
+function isRailwayPublicHost(hostname: string): boolean {
+  return hostname.endsWith('.up.railway.app') || hostname.endsWith('.railway.app');
+}
+
+function normalizeAiBaseUrl(raw: string): string {
   const env = loadEnv();
-  let url = env.AI_SERVICE_URL.trim().replace(/\/+$/, '');
+  let url = raw.trim().replace(/\/+$/, '');
 
   if (url.includes('${{')) {
     logger.warn(
       { aiServiceUrl: url },
-      'AI_SERVICE_URL contains an unresolved Railway template — redeploy after setting the variable reference',
+      'AI service URL contains an unresolved Railway template — redeploy after setting the variable reference',
     );
   }
 
-  // Railway private networking is HTTP-only; https causes redirects that can turn POST into GET.
-  if (url.includes('.railway.internal') && url.startsWith('https://')) {
-    url = `http://${url.slice('https://'.length)}`;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = `https://${url}`;
   }
 
-  // Append port when missing (common Railway misconfig: domain only, no :8000).
   try {
     const parsed = new URL(url);
-    if (!parsed.port) {
-      const port = env.AI_SERVICE_PORT;
-      parsed.port = String(port);
-      url = parsed.toString().replace(/\/$/, '');
-      if (!loggedAiUrlNormalization) {
+
+    if (isPrivateAiHost(parsed.hostname)) {
+      // Private mesh: HTTP only, explicit container port (e.g. 8000).
+      if (parsed.protocol === 'https:') {
+        parsed.protocol = 'http:';
+      }
+      if (!parsed.port) {
+        parsed.port = String(env.AI_SERVICE_PORT);
+        if (!loggedAiUrlNormalization) {
+          logger.info(
+            { aiServiceUrl: parsed.toString().replace(/\/$/, ''), aiServicePort: env.AI_SERVICE_PORT },
+            'Private AI URL had no port — appended from AI_SERVICE_PORT',
+          );
+          loggedAiUrlNormalization = true;
+        }
+      }
+      return parsed.toString().replace(/\/$/, '');
+    }
+
+    if (isRailwayPublicHost(parsed.hostname)) {
+      // Public Railway domain: HTTPS on 443 — never use container port :8000.
+      parsed.protocol = 'https:';
+      parsed.port = '';
+      const normalized = parsed.toString().replace(/\/$/, '');
+      if (url !== normalized && !loggedAiUrlNormalization) {
         logger.info(
-          { aiServiceUrl: url, aiServicePort: port },
-          'AI_SERVICE_URL had no port — appended from AI_SERVICE_PORT',
+          { from: url, to: normalized },
+          'Public Railway AI URL normalized — removed :8000; edge proxy uses HTTPS port 443',
         );
         loggedAiUrlNormalization = true;
       }
+      return normalized;
     }
-  } catch {
-    logger.warn({ aiServiceUrl: url }, 'AI_SERVICE_URL is not a valid URL');
-  }
 
-  return url;
+    return parsed.toString().replace(/\/$/, '');
+  } catch {
+    logger.warn({ aiServiceUrl: url }, 'AI service URL is not a valid URL');
+    return url;
+  }
+}
+
+function normalizeAiServiceUrl(): string {
+  return normalizeAiBaseUrl(loadEnv().AI_SERVICE_URL);
 }
 
 function aiServiceUrl(): string {
@@ -58,12 +94,17 @@ export function getAiServiceBaseUrl(): string {
 
 function getAiServiceCandidateUrls(): string[] {
   const env = loadEnv();
-  const primary = aiServiceUrl();
-  const publicUrl = env.AI_SERVICE_PUBLIC_URL?.trim().replace(/\/+$/, '');
-  if (publicUrl && publicUrl !== primary) {
-    return [primary, publicUrl];
+  const primary = normalizeAiBaseUrl(env.AI_SERVICE_URL);
+  const urls = [primary];
+
+  if (env.AI_SERVICE_PUBLIC_URL?.trim()) {
+    const publicUrl = normalizeAiBaseUrl(env.AI_SERVICE_PUBLIC_URL);
+    if (!urls.includes(publicUrl)) {
+      urls.push(publicUrl);
+    }
   }
-  return [primary];
+
+  return urls;
 }
 
 export async function probeAiServiceHealth(): Promise<{

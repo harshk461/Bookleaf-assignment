@@ -167,14 +167,21 @@ AI_SERVICE_PORT=8000
 
 Use `http://` only for `.railway.internal` URLs (never `https://`).
 
-**If private networking fails** (`ECONNREFUSED` in backend logs):
+**If private networking fails** (`ECONNREFUSED` in backend logs), use the **public domain** instead:
 
-1. In Railway → **ai-service** → **Settings** → **Networking** → **Generate Domain**
-2. On **backend**, add:
-   ```env
-   AI_SERVICE_PUBLIC_URL=https://${{AI.RAILWAY_PUBLIC_DOMAIN}}
-   ```
-3. Redeploy backend — it will try private URL first, then fall back to public.
+```env
+# HTTPS, no :8000 — Railway's edge proxy uses port 443
+AI_SERVICE_URL=https://${{AI.RAILWAY_PUBLIC_DOMAIN}}
+```
+
+Do **not** append `:8000` to `.up.railway.app` URLs — that causes connect timeouts.
+
+Optional fallback (tries private first, then public):
+
+```env
+AI_SERVICE_URL=http://${{AI.RAILWAY_PRIVATE_DOMAIN}}:${{AI.PORT}}
+AI_SERVICE_PUBLIC_URL=https://${{AI.RAILWAY_PUBLIC_DOMAIN}}
+```
 
 Debug: `curl https://<your-backend-domain>/health/ai` should show `"reachable": true`.
 
