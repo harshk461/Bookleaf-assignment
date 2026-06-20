@@ -4,9 +4,9 @@ dockerfilePath = "apps/ai-service/Dockerfile"
 
 [deploy]
 healthcheckPath = "/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 5
+restartPolicyMaxRetries = 3
 
 # Env vars are NOT defined here — Railway requires dashboard/CLI setup.
 # Copy deploy/railway.ai-service.env → ai-service → Variables → RAW Editor
