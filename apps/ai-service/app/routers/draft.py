@@ -8,6 +8,7 @@ router = APIRouter()
 
 
 @router.post("/draft", response_model=DraftResponse)
+@router.post("/draft/", response_model=DraftResponse, include_in_schema=False)
 def draft(req: DraftRequest):
     if is_over_budget(settings.max_daily_spend_usd):
         raise HTTPException(status_code=503, detail="AI daily budget exceeded")

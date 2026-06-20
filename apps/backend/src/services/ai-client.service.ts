@@ -4,14 +4,55 @@ import { AppError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import type { TicketCategory, TicketPriority } from '@bookleaf/shared';
 
+function normalizeAiServiceUrl(): string {
+  let url = loadEnv().AI_SERVICE_URL.trim().replace(/\/+$/, '');
+  // Railway private networking is HTTP-only; https causes redirects that can turn POST into GET.
+  if (url.includes('.railway.internal') && url.startsWith('https://')) {
+    url = `http://${url.slice('https://'.length)}`;
+  }
+  return url;
+}
+
 function aiServiceUrl(): string {
-  return loadEnv().AI_SERVICE_URL;
+  return normalizeAiServiceUrl();
+}
+
+export function getAiServiceBaseUrl(): string {
+  return aiServiceUrl();
 }
 
 const AI_FETCH_TIMEOUT_MS = 30_000;
 
-function aiFetch(url: string, init: RequestInit): Promise<Response> {
-  return fetch(url, { ...init, signal: AbortSignal.timeout(AI_FETCH_TIMEOUT_MS) });
+function aiEndpoint(path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${aiServiceUrl()}${normalizedPath}`;
+}
+
+async function aiPost(path: string, body: Record<string, unknown>): Promise<Response> {
+  const url = aiEndpoint(path);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+    redirect: 'manual',
+    signal: AbortSignal.timeout(AI_FETCH_TIMEOUT_MS),
+  });
+
+  if (res.status >= 300 && res.status < 400) {
+    const location = res.headers.get('location') ?? 'unknown';
+    throw new Error(
+      `AI service redirected POST ${url} → ${location} (${res.status}); check AI_SERVICE_URL uses http:// with no trailing slash`,
+    );
+  }
+
+  if (res.status === 405) {
+    logger.warn({ url, method: 'POST', path }, 'AI service returned 405 Method Not Allowed');
+  }
+
+  return res;
 }
 
 export interface AiUsageMeta {
@@ -72,14 +113,10 @@ export async function classifyAndPrioritize(input: {
   bookTitle?: string | null;
 }): Promise<ClassifyResult> {
   try {
-    const res = await aiFetch(`${aiServiceUrl()}/classify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject: input.subject,
-        description: input.description,
-        book_title: input.bookTitle ?? null,
-      }),
+    const res = await aiPost('/classify', {
+      subject: input.subject,
+      description: input.description,
+      book_title: input.bookTitle ?? null,
     });
     if (!res.ok) throw new Error(`AI service returned ${res.status}`);
     const data = (await res.json()) as AiClassifyResponse;
@@ -115,17 +152,13 @@ export async function generateDraft(input: {
   bookContext?: Record<string, unknown> | null;
 }): Promise<DraftResult> {
   try {
-    const res = await aiFetch(`${aiServiceUrl()}/draft`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject: input.subject,
-        description: input.description,
-        category: input.category,
-        book_title: input.bookTitle,
-        author_name: input.authorName,
-        book_context: input.bookContext ?? null,
-      }),
+    const res = await aiPost('/draft', {
+      subject: input.subject,
+      description: input.description,
+      category: input.category,
+      book_title: input.bookTitle,
+      author_name: input.authorName,
+      book_context: input.bookContext ?? null,
     });
     if (res.status === 503) throw new AppError(503, 'AI daily budget exceeded');
     if (!res.ok) throw new Error(`AI service returned ${res.status}`);
@@ -169,18 +202,14 @@ export async function generateAcknowledgement(input: {
     `Thank you for contacting BookLeaf Support. We have received your ticket (${input.ticketNumber}) and our team will follow up within 24-48 business hours.`;
 
   try {
-    const res = await aiFetch(`${aiServiceUrl()}/acknowledge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ticket_number: input.ticketNumber,
-        subject: input.subject,
-        description: input.description,
-        category: input.category,
-        priority: input.priority,
-        book_title: input.bookTitle,
-        author_name: input.authorName,
-      }),
+    const res = await aiPost('/acknowledge', {
+      ticket_number: input.ticketNumber,
+      subject: input.subject,
+      description: input.description,
+      category: input.category,
+      priority: input.priority,
+      book_title: input.bookTitle,
+      author_name: input.authorName,
     });
     if (res.status === 503) {
       logger.warn(

@@ -3,11 +3,11 @@ import Fastify from 'fastify';
 import { buildApp } from './app.js';
 import { closeDb } from './db/index.js';
 import { closeAckWorker, startAckWorker } from './queues/acknowledgement.queue.js';
-import { loadEnv } from './config/env.js';
+import { getAiServiceBaseUrl } from './services/ai-client.service.js';
 import { logger } from './utils/logger.js';
 
 async function checkAiServiceReachable(): Promise<void> {
-  const aiServiceUrl = loadEnv().AI_SERVICE_URL;
+  const aiServiceUrl = getAiServiceBaseUrl();
   try {
     const res = await fetch(`${aiServiceUrl}/health`, {
       signal: AbortSignal.timeout(5000),
